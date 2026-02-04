@@ -1,11 +1,28 @@
 import os
 from pathlib import Path
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-^9zf(qm$!u7*gr&j=_fg$=c0%&7$5qa9p$2_c$_zcm-4kad&%$'
-DEBUG = True
-ALLOWED_HOSTS = []
+
+
+# Lire la clé secrète depuis les variables d'environnement
+SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-default")
+
+# DEBUG doit être False en production
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+
+# ALLOWED_HOSTS doit inclure ton domaine Render
+# ALLOWED_HOSTS doit inclure ton domaine Render
+ALLOWED_HOSTS = [
+    "locative-app.onrender.com",
+    "localhost",
+    "127.0.0.1"
+]
+
+
+
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -15,6 +32,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core',
+    'whitenoise.runserver_nostatic',
+
 ]
 
 MIDDLEWARE = [
@@ -48,15 +67,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'locative_app.wsgi.application'
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.cjvvrwfozwbjykmvpphh',
-        'PASSWORD': '8XbD4UjzM6wpwKlj',
-        'HOST': 'aws-1-eu-west-2.pooler.supabase.com',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default=os.environ.get("DATABASE_URL")
+    )
 }
+
 
 
 
@@ -75,5 +90,9 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# WhiteNoise pour servir les fichiers statiques
+MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
