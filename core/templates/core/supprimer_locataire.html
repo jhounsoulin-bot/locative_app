@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>🗑 Supprimer le locataire : {{ locataire.nom }} ?</h3>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
+    <a href="{% url 'accueil' %}" class="btn btn-secondary">Annuler</a>
+</form>
+{% endblock %}

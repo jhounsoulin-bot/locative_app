@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Global</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 80%;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 Dashboard Global</h1>
+
+    <!-- Formulaire de filtres -->
+    <form method="get" action="">
+        <label for="proprietaire">Choisir un propriétaire :</label>
+        <select name="proprietaire" id="proprietaire" onchange="this.form.submit()">
+            <option value="">-- Tous les propriétaires --</option>
+            {% for p in proprietaires %}
+                <option value="{{ p.id }}" {% if proprietaire and proprietaire.id == p.id %}selected{% endif %}>
+                    {{ p.nom }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label for="mois">Choisir un mois :</label>
+        <select name="mois" id="mois" onchange="this.form.submit()">
+            <option value="">-- Tous les mois --</option>
+            <option value="1" {% if mois == '1' %}selected{% endif %}>Janvier</option>
+            <option value="2" {% if mois == '2' %}selected{% endif %}>Février</option>
+            <option value="3" {% if mois == '3' %}selected{% endif %}>Mars</option>
+            <option value="4" {% if mois == '4' %}selected{% endif %}>Avril</option>
+            <option value="5" {% if mois == '5' %}selected{% endif %}>Mai</option>
+            <option value="6" {% if mois == '6' %}selected{% endif %}>Juin</option>
+            <option value="7" {% if mois == '7' %}selected{% endif %}>Juillet</option>
+            <option value="8" {% if mois == '8' %}selected{% endif %}>Août</option>
+            <option value="9" {% if mois == '9' %}selected{% endif %}>Septembre</option>
+            <option value="10" {% if mois == '10' %}selected{% endif %}>Octobre</option>
+            <option value="11" {% if mois == '11' %}selected{% endif %}>Novembre</option>
+            <option value="12" {% if mois == '12' %}selected{% endif %}>Décembre</option>
+        </select>
+    </form>
+
+    <!-- Bouton Export PDF -->
+    <p>
+        <a href="{% url 'dashboard_pdf' %}?mois={{ mois }}{% if proprietaire %}&proprietaire={{ proprietaire.id }}{% endif %}" target="_blank">
+            📄 Exporter en PDF
+        </a>
+    </p>
+
+    <!-- Statistiques -->
+    <ul>
+        <li>Nombre de propriétaires : {{ proprietaires_count }}</li>
+        <li>Nombre de locataires : {{ locataires_count }}</li>
+        <li>Montant total loyers locataires : {{ total_loyers_locataires }}</li>
+        <li>Total loyers reçus : {{ total_recu }}</li>
+        <li>Loyer restant (impayés) : {{ loyer_restant }}</li>
+        <li>Commission totale entreprise : {{ commission_totale }}</li>
+    </ul>
+
+    <!-- Graphiques -->
+    <div style="display:flex; gap:40px; flex-wrap:wrap;">
+        <canvas id="barChart" style="max-width:500px; height:250px;"></canvas>
+        <canvas id="pieChart" style="max-width:400px; height:250px;"></canvas>
+    </div>
+
+    <script>
+        // Diagramme en barres
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Loyers totaux', 'Loyers reçus', 'Loyers impayés', 'Commission'],
+                datasets: [{
+                    label: 'Montants (FCFA)',
+                    data: [
+                        {{ total_loyers_locataires }},
+                        {{ total_recu }},
+                        {{ loyer_restant }},
+                        {{ commission_totale }}
+                    ],
+                    backgroundColor: ['green', 'blue', 'orange', 'purple']
+                }]
+            }
+        });
+
+        // Camembert
+        new Chart(document.getElementById('pieChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Payés', 'Impayés'],
+                datasets: [{
+                    data: [{{ locataires_payes }}, {{ locataires_impayes }}],
+                    backgroundColor: ['green', 'red']
+                }]
+            }
+        });
+    </script>
+
+    <!-- Tableau des locataires -->
+    <h2>📋 Détail des locataires</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Locataire</th>
+            <th>Montant payé</th>
+            <th>Statut</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for locataire in locataires_data %}
+            <tr>
+                <td>{{ locataire.nom }}</td>
+                <td>{{ locataire.montant }}</td>
+                <td>{{ locataire.statut }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="3">Aucun locataire trouvé</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>

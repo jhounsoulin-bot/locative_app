@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>✏️ Modifier le locataire : {{ form.instance.nom }}</h3>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">✅ Enregistrer les modifications</button>
+    <a href="{% url 'accueil' %}" class="btn btn-secondary">Annuler</a>
+</form>
+{% endblock %}

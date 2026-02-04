@@ -1,0 +1,1 @@
+web: gunicorn locative_app.wsgi
