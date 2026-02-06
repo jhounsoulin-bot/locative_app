@@ -38,27 +38,26 @@ class LocataireForm(forms.ModelForm):
             }),
         }
 
+
 class PaiementForm(forms.ModelForm):
+    proprietaire = forms.ModelChoiceField(
+        queryset=Proprietaire.objects.all(),
+        required=True,
+        label="Propriétaire",
+        widget=forms.Select(attrs={"class": "form-select"})
+    )
+    locataire = forms.ModelChoiceField(
+        queryset=Locataire.objects.none(),
+        required=True,
+        label="Locataire",
+        widget=forms.Select(attrs={"class": "form-select"})
+    )
+
     class Meta:
         model = Paiement
-        fields = ["locataire", "montant", "date_paiement", "mois_concerne", "en_avance"]
+        fields = ["locataire", "mois_concerne", "montant"]  # ⚠️ on enlève "proprietaire"
         widgets = {
-            "locataire": forms.Select(attrs={
-                "class": "form-select"
-            }),
-            "montant": forms.NumberInput(attrs={
-                "class": "form-control",
-                "placeholder": "Montant payé"
-            }),
-            "date_paiement": forms.DateInput(attrs={
-                "class": "form-control",
-                "type": "date"
-            }),
-            "mois_concerne": forms.DateInput(attrs={
-                "class": "form-control",
-                "type": "date"
-            }),
-            "en_avance": forms.CheckboxInput(attrs={
-                "class": "form-check-input"
-            }),
+            "mois_concerne": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "montant": forms.NumberInput(attrs={"class": "form-control"}),
         }
+

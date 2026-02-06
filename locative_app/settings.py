@@ -68,9 +68,12 @@ WSGI_APPLICATION = 'locative_app.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get("DATABASE_URL")
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        ssl_require=False
     )
 }
+
 
 
 
@@ -90,9 +93,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Fichiers statiques
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Dossier où collectstatic va rassembler les fichiers pour la prod
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Facultatif : si tu veux aussi avoir un dossier "static" en local
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
 
 # WhiteNoise pour servir les fichiers statiques
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
