@@ -1,31 +1,54 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Ajouter un paiement</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card shadow-lg border-0">
-                    <div class="card-header bg-warning text-dark">
-                        <h4 class="mb-0">💰 Enregistrer un paiement</h4>
-                    </div>
-                    <div class="card-body">
-                        <form method="post">
-                            {% csrf_token %}
-                            {{ form.as_p }}
-                            <div class="d-flex justify-content-between mt-3">
-                                <button type="submit" class="btn btn-warning">✅ Enregistrer</button>
-                                <a href="{% url 'accueil' %}" class="btn btn-secondary">↩️ Annuler</a>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- templates/core/ajouter_paiement.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Ajouter un paiement</h2>
+  <form method="post" class="card p-4 shadow">
+    {% csrf_token %}
+    
+    <div class="mb-3">
+      <label for="id_proprietaire" class="form-label">Propriétaire</label>
+      {{ form.proprietaire }}
     </div>
-</body>
-</html>
+
+    <div class="mb-3">
+      <label for="id_locataire" class="form-label">Locataire</label>
+      <select id="id_locataire" name="locataire" class="form-select">
+        <option value="">-- Sélectionnez un locataire --</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="id_mois_concerne" class="form-label">Mois concerné</label>
+      {{ form.mois_concerne }}
+    </div>
+
+    <div class="mb-3">
+      <label for="id_montant" class="form-label">Montant</label>
+      {{ form.montant }}
+    </div>
+
+    <button type="submit" class="btn btn-primary">Valider</button>
+  </form>
+</div>
+
+<script>
+document.getElementById("id_proprietaire").addEventListener("change", function() {
+    const proprietaireId = this.value;
+    if (!proprietaireId) return;
+
+    fetch(`/get-locataires/${proprietaireId}/`)
+      .then(response => response.json())
+      .then(data => {
+        const locataireSelect = document.getElementById("id_locataire");
+        locataireSelect.innerHTML = '<option value="">-- Sélectionnez un locataire --</option>';
+        data.forEach(loc => {
+          const option = document.createElement("option");
+          option.value = loc.id;
+          option.textContent = loc.nom;
+          locataireSelect.appendChild(option);
+        });
+      });
+});
+</script>
+{% endblock %}
