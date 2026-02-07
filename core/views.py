@@ -330,10 +330,8 @@ def ajouter_paiement(request):
             return redirect("accueil")
     else:
         form = PaiementForm()
-        # ✅ alimenter dynamiquement le queryset des locataires
-        form.fields["locataire"].queryset = Locataire.objects.all()
-
     return render(request, "core/ajouter_paiement.html", {"form": form})
+
 
 
 

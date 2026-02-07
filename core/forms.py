@@ -16,6 +16,7 @@ class ProprietaireForm(forms.ModelForm):
             }),
         }
 
+
 class LocataireForm(forms.ModelForm):
     class Meta:
         model = Locataire
@@ -39,27 +40,32 @@ class LocataireForm(forms.ModelForm):
         }
 
 
+# ✅ Widget personnalisé pour mois/année
+class MonthYearWidget(forms.DateInput):
+    input_type = "month"
+
+
 class PaiementForm(forms.ModelForm):
     proprietaire = forms.ModelChoiceField(
         queryset=Proprietaire.objects.all(),
         required=True,
         label="Propriétaire",
-        widget=forms.Select(attrs={"class": "form-select"})
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_proprietaire"})
     )
     locataire = forms.ModelChoiceField(
-        queryset=Locataire.objects.all(),  # ✅ afficher tous les locataires
+        queryset=Locataire.objects.none(),  # vide par défaut
         required=True,
         label="Locataire",
-        widget=forms.Select(attrs={"class": "form-select"})
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_locataire"})
     )
 
     class Meta:
         model = Paiement
         fields = ["proprietaire", "locataire", "date_paiement", "mois_concerne", "montant", "paye_en_avance"]
         widgets = {
-            "date_paiement": forms.DateInput(attrs={"type": "date", "class": "form-control"}),  # ✅ cadre ajouté
-            "mois_concerne": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "montant": forms.NumberInput(attrs={"class": "form-control"}),
-            "paye_en_avance": forms.CheckboxInput(attrs={"class": "form-check-input"}),  # ✅ petit carré
+            "date_paiement": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "mois_concerne": MonthYearWidget(attrs={"class": "form-control", "id": "id_mois_concerne"}),
+            "montant": forms.NumberInput(attrs={"class": "form-control", "id": "id_montant"}),
+            "paye_en_avance": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_paye_en_avance"}),
         }
 

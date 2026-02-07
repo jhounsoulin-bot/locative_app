@@ -8,15 +8,13 @@
     <!-- Propriétaire -->
     <div class="mb-3">
       <label for="id_proprietaire" class="form-label">Propriétaire</label>
-      {{ form.proprietaire }}
+      {{ form.proprietaire }}   <!-- ⚠️ garde bien ça -->
     </div>
 
     <!-- Locataire -->
     <div class="mb-3">
       <label for="id_locataire" class="form-label">Locataire</label>
-      <select id="id_locataire" name="locataire" class="form-select">
-        <option value="">-- Sélectionnez un locataire --</option>
-      </select>
+      {{ form.locataire }}   <!-- ⚠️ garde bien ça aussi -->
     </div>
 
     <!-- Date de paiement -->
@@ -52,14 +50,17 @@
 // Quand on choisit un propriétaire
 document.getElementById("id_proprietaire").addEventListener("change", function() {
     const proprietaireId = this.value;
+    const locataireSelect = document.getElementById("id_locataire");
+
+    // Vider la liste des locataires
+    locataireSelect.innerHTML = '<option value="">-- Sélectionnez un locataire --</option>';
+
     if (!proprietaireId) return;
 
     // Charger les locataires du propriétaire
     fetch(`/get-locataires/${proprietaireId}/`)
       .then(response => response.json())
       .then(data => {
-        const locataireSelect = document.getElementById("id_locataire");
-        locataireSelect.innerHTML = '<option value="">-- Sélectionnez un locataire --</option>';
         data.forEach(loc => {
           const option = document.createElement("option");
           option.value = loc.id;
@@ -84,5 +85,4 @@ document.getElementById("id_locataire").addEventListener("change", function() {
       });
 });
 </script>
-
 {% endblock %}
