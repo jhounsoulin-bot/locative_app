@@ -47,7 +47,7 @@ class PaiementForm(forms.ModelForm):
         widget=forms.Select(attrs={"class": "form-select"})
     )
     locataire = forms.ModelChoiceField(
-        queryset=Locataire.objects.none(),
+        queryset=Locataire.objects.all(),  # ✅ afficher tous les locataires
         required=True,
         label="Locataire",
         widget=forms.Select(attrs={"class": "form-select"})
@@ -55,9 +55,11 @@ class PaiementForm(forms.ModelForm):
 
     class Meta:
         model = Paiement
-        fields = ["locataire", "mois_concerne", "montant"]  # ⚠️ on enlève "proprietaire"
+        fields = ["proprietaire", "locataire", "date_paiement", "mois_concerne", "montant", "paye_en_avance"]
         widgets = {
+            "date_paiement": forms.DateInput(attrs={"type": "date", "class": "form-control"}),  # ✅ cadre ajouté
             "mois_concerne": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "montant": forms.NumberInput(attrs={"class": "form-control"}),
+            "paye_en_avance": forms.CheckboxInput(attrs={"class": "form-check-input"}),  # ✅ petit carré
         }
 

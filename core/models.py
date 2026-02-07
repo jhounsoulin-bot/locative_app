@@ -27,13 +27,28 @@ class Locataire(models.Model):
 
 
 
-
 class Paiement(models.Model):
-    locataire = models.ForeignKey(Locataire, on_delete=models.CASCADE)
-    montant = models.DecimalField(max_digits=10, decimal_places=2)
-    date_paiement = models.DateField()
-    mois_concerne = models.DateField()  # le mois du loyer payé
-    en_avance = models.BooleanField(default=False)
+    proprietaire = models.ForeignKey(
+    "Proprietaire",
+    on_delete=models.CASCADE,
+    related_name="paiements",
+    verbose_name="Propriétaire",
+    null=True,   # ✅ autorise vide en base
+    blank=True   # ✅ autorise vide dans les formulaires
+)
+    locataire = models.ForeignKey(
+        "Locataire",
+        on_delete=models.CASCADE,
+        related_name="paiements",
+        verbose_name="Locataire"
+    )
+    date_paiement = models.DateField(verbose_name="Date de paiement")
+    mois_concerne = models.DateField(verbose_name="Mois concerné")
+    montant = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Montant")
+    paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
 
     def __str__(self):
         return f"{self.locataire.nom} - {self.montant} ({self.date_paiement})"
+
+
+

@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -57,10 +57,10 @@ def facture_proprietaire(request, proprietaire_id):
 
     infos = [
         ("Propriétaire", proprietaire.nom),
-        ("Montant total loyers locataires", f"{total_loyers_locataires}"),
-        ("Total loyers reçus", f"{total_recu}"),
-        ("Loyer restant (impayés)", f"{loyer_restant}"),
-        ("Commission entreprise", f"{commission}")
+        ("Montant total loyers locataires", f"{total_loyers_locataires:.2f}"),  # ✅ formatage
+        ("Total loyers reçus", f"{total_recu:.2f}"),
+        ("Loyer restant (impayés)", f"{loyer_restant:.2f}"),
+        ("Commission entreprise", f"{commission:.2f}")
     ]
 
     p.setFont("Helvetica", 11)
@@ -95,7 +95,7 @@ def facture_proprietaire(request, proprietaire_id):
         p.rect(col_x[2], y, col_widths[2], row_height, stroke=1, fill=0)
 
         p.drawString(col_x[0] + 5, y + 5, locataire.nom)
-        p.drawString(col_x[1] + 5, y + 5, f"{montant}")
+        p.drawString(col_x[1] + 5, y + 5, f"{montant:.2f}")   # ✅ formatage
         p.drawString(col_x[2] + 5, y + 5, statut)
         y -= row_height
 
@@ -108,6 +108,12 @@ def facture_proprietaire(request, proprietaire_id):
     p.showPage()
     p.save()
     return response
+
+
+
+
+
+
 
 # -------------------------
 # DASHBOARD HTML
@@ -324,7 +330,11 @@ def ajouter_paiement(request):
             return redirect("accueil")
     else:
         form = PaiementForm()
+        # ✅ alimenter dynamiquement le queryset des locataires
+        form.fields["locataire"].queryset = Locataire.objects.all()
+
     return render(request, "core/ajouter_paiement.html", {"form": form})
+
 
 
 
@@ -368,3 +378,17 @@ def supprimer_locataire(request, pk):
         locataire.delete()
         return redirect("accueil")
     return render(request, "core/supprimer_locataire.html", {"locataire": locataire})
+
+
+
+def get_locataires_by_proprietaire(request, proprietaire_id):
+    locataires = Locataire.objects.filter(proprietaire_id=proprietaire_id)
+    data = [{"id": l.id, "nom": l.nom} for l in locataires]
+    return JsonResponse(data, safe=False)
+
+def get_loyer_locataire(request, locataire_id):
+    try:
+        locataire = Locataire.objects.get(id=locataire_id)
+        return JsonResponse({"loyer": float(locataire.loyer_mensuel)})
+    except Locataire.DoesNotExist:
+        return JsonResponse({"error": "Locataire introuvable"}, status=404)
