@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-default")
 
 # DEBUG doit être False en production
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 # ALLOWED_HOSTS doit inclure ton domaine Render
 # ALLOWED_HOSTS doit inclure ton domaine Render
@@ -51,7 +51,7 @@ ROOT_URLCONF = 'locative_app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -64,6 +64,8 @@ TEMPLATES = [
     },
 ]
 
+
+
 WSGI_APPLICATION = 'locative_app.wsgi.application'
 
 DATABASES = {
@@ -73,12 +75,6 @@ DATABASES = {
         ssl_require=False
     )
 }
-
-
-
-
-
-
 
 
 AUTH_PASSWORD_VALIDATORS = [

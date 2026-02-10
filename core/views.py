@@ -281,7 +281,6 @@ def accueil(request):
 
     # ✅ dictionnaire {locataire_id: loyer}
     loyers_dict = {str(locataire.id): float(locataire.loyer_mensuel) for locataire in locataires}
-    # ⚠️ clé en string pour correspondre à la value du <select>
 
     context = {
         "proprietaires": proprietaires,
@@ -293,12 +292,59 @@ def accueil(request):
         "mois": mois,
         "mois_list": range(1, 13),
         "locataires_non_payes": locataires_non_payes,
+        "non_payes_count": len(locataires_non_payes),
         "proprietaire_form": ProprietaireForm(),
         "locataire_form": LocataireForm(),
         "paiement_form": PaiementForm(),
-        "loyers_dict": loyers_dict,  # ✅ ajouté
+        "loyers_dict": loyers_dict,
     }
+
     return render(request, "core/accueil.html", context)
+
+
+def rapport_proprietaire(request, proprietaire_id):
+    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
+    locataires = proprietaire.locataire_set.all()
+    paiements = Paiement.objects.filter(locataire__in=locataires)
+
+    mois = request.GET.get("mois")
+    mois_rapport = ""
+    if mois:
+        mois_int = int(mois)
+        paiements = paiements.filter(mois_concerne__month=mois_int)
+        mois_rapport = MOIS_FR[mois_int]
+
+    total_loyers = sum([l.loyer_mensuel for l in locataires])
+    total_paye = sum([p.montant for p in paiements])
+    commission = total_paye * Decimal("0.1")
+
+    locataires_data = []
+    for locataire in locataires:
+        paiement_existe = paiements.filter(locataire=locataire).exists()
+        statut = "Payé" if paiement_existe else "Non payé"
+        locataires_data.append({
+            "nom": locataire.nom,
+            "loyer": locataire.loyer_mensuel,
+            "statut": statut,
+        })
+
+    context = {
+        "proprietaire": proprietaire,
+        "total_loyers": total_loyers,
+        "total_paye": total_paye,
+        "commission": commission,
+        "locataires_data": locataires_data,
+        "mois_list": [(i, MOIS_FR[i]) for i in range(1, 13)],
+        "mois_rapport": mois_rapport,   # ✅ mois choisi
+        "mois": mois,                   # ✅ valeur brute pour le bouton PDF
+    }
+    return render(request, "core/rapport_proprietaire.html", context)
+
+
+
+
+
+
 
 
 
@@ -321,6 +367,8 @@ def ajouter_locataire(request):
     else:
         form = LocataireForm()
     return render(request, "core/ajouter_locataire.html", {"form": form})
+
+
 
 def ajouter_paiement(request):
     if request.method == "POST":
@@ -378,15 +426,119 @@ def supprimer_locataire(request, pk):
     return render(request, "core/supprimer_locataire.html", {"locataire": locataire})
 
 
-
-def get_locataires_by_proprietaire(request, proprietaire_id):
-    locataires = Locataire.objects.filter(proprietaire_id=proprietaire_id)
-    data = [{"id": l.id, "nom": l.nom} for l in locataires]
-    return JsonResponse(data, safe=False)
-
 def get_loyer_locataire(request, locataire_id):
     try:
         locataire = Locataire.objects.get(id=locataire_id)
         return JsonResponse({"loyer": float(locataire.loyer_mensuel)})
     except Locataire.DoesNotExist:
         return JsonResponse({"error": "Locataire introuvable"}, status=404)
+
+def get_locataires_by_proprietaire_nom(request, proprietaire_nom):
+    print("DEBUG - Propriétaire reçu :", proprietaire_nom)  # affiche dans la console
+    locataires = Locataire.objects.filter(proprietaire__nom=proprietaire_nom)
+    print("DEBUG - Locataires trouvés :", list(locataires))  # affiche la liste des objets
+
+    data = [{"id": l.id, "nom": l.nom} for l in locataires]
+    print("DEBUG - JSON renvoyé :", data)  # affiche le JSON final
+
+    return JsonResponse(data, safe=False)
+
+
+def rapport_proprietaire_pdf(request, proprietaire_id):
+    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
+    locataires = proprietaire.locataire_set.all()
+    paiements = Paiement.objects.filter(locataire__in=locataires)
+
+    # 🔹 Ici on récupère le mois choisi dans l'URL
+    mois = request.GET.get("mois")
+    mois_rapport = ""
+    if mois:
+        mois_int = int(mois)  # ✅ maintenant c’est juste un chiffre
+        paiements = paiements.filter(mois_concerne__month=mois_int)
+        mois_rapport = MOIS_FR[mois_int]
+    elif paiements.exists():
+        mois_num = paiements.first().mois_concerne.month
+        mois_rapport = MOIS_FR[mois_num]
+
+    # Calculs principaux
+    total_loyers = sum([l.loyer_mensuel for l in locataires])
+    total_paye = sum([p.montant for p in paiements])
+    commission = total_paye * Decimal("0.1")
+    # Déterminer le mois du rapport
+    mois_rapport = ""
+    if mois:
+        mois_rapport = MOIS_FR[int(mois)]
+    elif paiements.exists():
+        mois_num = paiements.first().mois_concerne.month
+        mois_rapport = MOIS_FR[mois_num]
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="rapport_{proprietaire.nom}.pdf"'
+
+    p = canvas.Canvas(response, pagesize=A4)
+    width, height = A4
+
+    # Titre
+    p.setFont("Helvetica-Bold", 16)
+    p.drawCentredString(width/2, height-50, "RAPPORT MENSUEL NIVAL IMPACT")
+
+    # Infos principales
+    y = height - 100
+    p.setFont("Helvetica", 12)
+    p.drawString(50, y, f"Propriétaire : {proprietaire.nom}")
+    y -= 20
+    p.drawString(50, y, f"Montant total loyers : {total_loyers} FCFA")
+    y -= 20
+    p.drawString(50, y, f"Montant total payé : {total_paye} FCFA")
+    y -= 20
+    p.drawString(50, y, f"Commission agence (10%) : {commission} FCFA")
+
+    # Tableau des locataires
+    y -= 40
+    row_height = 20
+    col_x = [2 * cm, 9 * cm, 14 * cm]
+    col_widths = [7 * cm, 5 * cm, 5 * cm]
+
+    # Entêtes
+    p.setFont("Helvetica-Bold", 12)
+    headers = ["Locataire", "Loyer", "Statut"]
+    for i, header in enumerate(headers):
+        p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
+        p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, header)
+
+    y -= row_height
+    p.setFont("Helvetica", 11)
+
+    # Lignes du tableau
+    for locataire in locataires:
+        paiement_existe = paiements.filter(locataire=locataire).exists()
+        statut = "Payé" if paiement_existe else "Non payé"
+
+        p.rect(col_x[0], y, col_widths[0], row_height, stroke=1, fill=0)
+        p.rect(col_x[1], y, col_widths[1], row_height, stroke=1, fill=0)
+        p.rect(col_x[2], y, col_widths[2], row_height, stroke=1, fill=0)
+
+        p.drawString(col_x[0] + 5, y + 5, locataire.nom)
+        p.drawString(col_x[1] + 5, y + 5, f"{locataire.loyer_mensuel} FCFA")
+        p.drawString(col_x[2] + 5, y + 5, statut)
+        y -= row_height
+
+    # Signatures
+    y -= 40
+    p.setFont("Helvetica", 12)
+    p.drawString(2 * cm, y, "Signature du gestionnaire")
+    p.drawString(width - 7 * cm, y, "Signature du propriétaire")
+
+    # Mois du rapport en bas
+    y -= 40
+    if mois_rapport:
+        p.setFont("Helvetica-Bold", 12)
+        p.drawCentredString(width/2, y, f"Mois du rapport : {mois_rapport}")
+
+    p.showPage()
+    p.save()
+    return response
+
+
+
+

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from core import views   # <-- importer le module views
+from core import views   # importer le module views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -11,7 +11,9 @@ urlpatterns = [
     path("ajouter-paiement/", views.ajouter_paiement, name="ajouter_paiement"),
     path("facture/<int:proprietaire_id>/", views.facture_proprietaire, name="facture_proprietaire"),
     path("dashboard-pdf/", views.dashboard_pdf, name="dashboard_pdf"),
-    path("get-locataires/<int:proprietaire_id>/", views.get_locataires_by_proprietaire, name="get_locataires"),
+    path("rapport-proprietaire/<int:proprietaire_id>/", views.rapport_proprietaire, name="rapport_proprietaire"),
+    path("rapport-proprietaire-pdf/<int:proprietaire_id>/", views.rapport_proprietaire_pdf, name="rapport_proprietaire_pdf"),  # ✅ nouvelle route
+    path("get-locataires-nom/<str:proprietaire_nom>/", views.get_locataires_by_proprietaire_nom, name="get_locataires_nom"),
     path("get-loyer/<int:locataire_id>/", views.get_loyer_locataire, name="get_loyer_locataire"),
 
     # ✅ routes pour modification/suppression
