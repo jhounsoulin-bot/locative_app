@@ -69,3 +69,12 @@ class PaiementForm(forms.ModelForm):
             "paye_en_avance": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_paye_en_avance"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        proprietaire_id = kwargs.pop("proprietaire_id", None)  # récupère l'ID du propriétaire
+        super().__init__(*args, **kwargs)
+        if proprietaire_id:
+            # ✅ ne propose que les locataires du propriétaire choisi
+            self.fields["locataire"].queryset = Locataire.objects.filter(proprietaire_id=proprietaire_id)
+        else:
+            # ✅ sinon propose tous les locataires
+            self.fields["locataire"].queryset = Locataire.objects.all()

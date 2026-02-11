@@ -10,7 +10,7 @@ class Ville(models.Model):
 
 class Proprietaire(models.Model):
     nom = models.CharField(max_length=100)
-    numero = models.CharField(max_length=20, default="0000000000")  # ✅ valeur par défaut
+    numero = models.CharField(max_length=20, default="0000000000")
 
     def __str__(self):
         return self.nom
@@ -19,25 +19,29 @@ class Proprietaire(models.Model):
 class Locataire(models.Model):
     nom = models.CharField(max_length=100)
     numero = models.CharField(max_length=20, default="0000000000")
-    loyer_mensuel = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # ✅ ajouté
-    proprietaire = models.ForeignKey(Proprietaire, on_delete=models.CASCADE)
+    loyer_mensuel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    proprietaire = models.ForeignKey(
+        Proprietaire,
+        on_delete=models.CASCADE,
+        related_name="locataires",   # ✅ permet d'accéder aux locataires via proprietaire.locataires.all()
+        verbose_name="Propriétaire"
+    )
 
     def __str__(self):
-        return self.nom
-
+        return f"{self.nom} ({self.proprietaire.nom})"
 
 
 class Paiement(models.Model):
     proprietaire = models.ForeignKey(
-    "Proprietaire",
-    on_delete=models.CASCADE,
-    related_name="paiements",
-    verbose_name="Propriétaire",
-    null=True,   # ✅ autorise vide en base
-    blank=True   # ✅ autorise vide dans les formulaires
-)
+        Proprietaire,
+        on_delete=models.CASCADE,
+        related_name="paiements",
+        verbose_name="Propriétaire",
+        null=True,
+        blank=True
+    )
     locataire = models.ForeignKey(
-        "Locataire",
+        Locataire,
         on_delete=models.CASCADE,
         related_name="paiements",
         verbose_name="Locataire"
@@ -49,6 +53,3 @@ class Paiement(models.Model):
 
     def __str__(self):
         return f"{self.locataire.nom} - {self.montant} ({self.date_paiement})"
-
-
-

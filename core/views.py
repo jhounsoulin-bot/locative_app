@@ -110,11 +110,6 @@ def facture_proprietaire(request, proprietaire_id):
     return response
 
 
-
-
-
-
-
 # -------------------------
 # DASHBOARD HTML
 # -------------------------
@@ -255,8 +250,10 @@ def dashboard_pdf(request):
     return response
 
 
+
 def accueil(request):
     mois = request.GET.get("mois")
+
     proprietaires = Proprietaire.objects.all()
     locataires = Locataire.objects.all()
     paiements = Paiement.objects.all()
@@ -271,7 +268,7 @@ def accueil(request):
     # ✅ Liste des locataires qui n'ont pas payé
     locataires_non_payes = []
     for proprietaire in proprietaires:
-        for locataire in proprietaire.locataire_set.all():
+        for locataire in proprietaire.locataires.all():   # <-- CORRECT
             paiement_existe = paiements.filter(locataire=locataire).exists()
             if not paiement_existe:
                 locataires_non_payes.append({
@@ -284,6 +281,7 @@ def accueil(request):
 
     context = {
         "proprietaires": proprietaires,
+        "locataires": locataires,
         "locataires_count": locataires.count(),
         "proprietaires_count": proprietaires.count(),
         "total_loyers": total_loyers,
@@ -302,9 +300,10 @@ def accueil(request):
     return render(request, "core/accueil.html", context)
 
 
+
 def rapport_proprietaire(request, proprietaire_id):
     proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    locataires = proprietaire.locataire_set.all()
+    locataires = proprietaire.locataires.all()   # <-- correction ici
     paiements = Paiement.objects.filter(locataire__in=locataires)
 
     mois = request.GET.get("mois")
@@ -335,18 +334,10 @@ def rapport_proprietaire(request, proprietaire_id):
         "commission": commission,
         "locataires_data": locataires_data,
         "mois_list": [(i, MOIS_FR[i]) for i in range(1, 13)],
-        "mois_rapport": mois_rapport,   # ✅ mois choisi
-        "mois": mois,                   # ✅ valeur brute pour le bouton PDF
+        "mois_rapport": mois_rapport,
+        "mois": mois,
     }
     return render(request, "core/rapport_proprietaire.html", context)
-
-
-
-
-
-
-
-
 
 def ajouter_proprietaire(request):
     if request.method == "POST":
@@ -371,15 +362,43 @@ def ajouter_locataire(request):
 
 
 def ajouter_paiement(request):
+    proprietaire_id = request.GET.get("proprietaire")
+
     if request.method == "POST":
-        form = PaiementForm(request.POST)
+        form = PaiementForm(request.POST, proprietaire_id=proprietaire_id)
         if form.is_valid():
             form.save()
             return redirect("accueil")
     else:
-        form = PaiementForm()
-    return render(request, "core/ajouter_paiement.html", {"form": form})
+        form = PaiementForm(proprietaire_id=proprietaire_id)
 
+    context = {
+        "form": form,
+        "proprietaires": Proprietaire.objects.all(),
+        "proprietaire_id": proprietaire_id,  # pour garder la sélection
+    }
+    return render(request, "core/ajouter_paiement.html", context)
+
+
+def paiement_create(request, proprietaire_id):
+    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
+    locataires = Locataire.objects.filter(proprietaire=proprietaire)
+
+    if request.method == "POST":
+        form = PaiementForm(request.POST)
+        if form.is_valid():
+            paiement = form.save(commit=False)
+            paiement.proprietaire = proprietaire
+            paiement.save()
+            return redirect("paiement_list")
+    else:
+        form = PaiementForm()
+
+    return render(request, "core/paiement_form.html", {
+        "form": form,
+        "proprietaire": proprietaire,
+        "locataires": locataires,
+    })
 
 
 
@@ -426,12 +445,13 @@ def supprimer_locataire(request, pk):
     return render(request, "core/supprimer_locataire.html", {"locataire": locataire})
 
 
-def get_loyer_locataire(request, locataire_id):
+def get_loyer(request, locataire_id):
     try:
         locataire = Locataire.objects.get(id=locataire_id)
         return JsonResponse({"loyer": float(locataire.loyer_mensuel)})
     except Locataire.DoesNotExist:
         return JsonResponse({"error": "Locataire introuvable"}, status=404)
+
 
 def get_locataires_by_proprietaire_nom(request, proprietaire_nom):
     print("DEBUG - Propriétaire reçu :", proprietaire_nom)  # affiche dans la console
@@ -446,24 +466,25 @@ def get_locataires_by_proprietaire_nom(request, proprietaire_nom):
 
 def rapport_proprietaire_pdf(request, proprietaire_id):
     proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    locataires = proprietaire.locataire_set.all()
+    locataires = proprietaire.locataires.all()   # <-- correction ici
     paiements = Paiement.objects.filter(locataire__in=locataires)
 
-    # 🔹 Ici on récupère le mois choisi dans l'URL
     mois = request.GET.get("mois")
     mois_rapport = ""
     if mois:
-        mois_int = int(mois)  # ✅ maintenant c’est juste un chiffre
+        mois_int = int(mois)
         paiements = paiements.filter(mois_concerne__month=mois_int)
         mois_rapport = MOIS_FR[mois_int]
     elif paiements.exists():
         mois_num = paiements.first().mois_concerne.month
         mois_rapport = MOIS_FR[mois_num]
 
-    # Calculs principaux
     total_loyers = sum([l.loyer_mensuel for l in locataires])
     total_paye = sum([p.montant for p in paiements])
     commission = total_paye * Decimal("0.1")
+
+    # … reste de ton code PDF …
+
     # Déterminer le mois du rapport
     mois_rapport = ""
     if mois:
@@ -538,6 +559,12 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     p.showPage()
     p.save()
     return response
+
+def get_locataires(request, proprietaire_id):
+    locataires = Locataire.objects.filter(proprietaire_id=proprietaire_id)
+    data = [{"id": l.id, "nom": l.nom} for l in locataires]
+    return JsonResponse({"locataires": data})
+
 
 
 

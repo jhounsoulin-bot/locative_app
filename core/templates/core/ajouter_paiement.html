@@ -5,17 +5,17 @@
   <form method="post" class="card p-4 shadow">
     {% csrf_token %}
     
-    <!-- Propriétaire -->
-    <div class="mb-3">
-      <label for="id_proprietaire" class="form-label">Propriétaire</label>
-      {{ form.proprietaire }}   <!-- ⚠️ garde bien ça -->
-    </div>
+ <div class="mb-3">
+  <label for="id_proprietaire" class="form-label">Propriétaire</label>
+  {{ paiement_form.proprietaire }}
+</div>
 
-    <!-- Locataire -->
-    <div class="mb-3">
-      <label for="id_locataire" class="form-label">Locataire</label>
-      {{ form.locataire }}   <!-- ⚠️ garde bien ça aussi -->
-    </div>
+<div class="mb-3">
+  <label for="id_locataire" class="form-label">Locataire</label>
+  {{ paiement_form.locataire }}
+</div>
+
+
 
     <!-- Date de paiement -->
     <div class="mb-3">
@@ -47,42 +47,35 @@
 </div>
 
 <script>
-// Quand on choisit un propriétaire
-document.getElementById("id_proprietaire").addEventListener("change", function() {
-    const proprietaireId = this.value;
-    const locataireSelect = document.getElementById("id_locataire");
+document.addEventListener("DOMContentLoaded", function() {
+    const proprietaireSelect = document.getElementById("id_proprietaire");
 
-    // Vider la liste des locataires
-    locataireSelect.innerHTML = '<option value="">-- Sélectionnez un locataire --</option>';
-
-    if (!proprietaireId) return;
-
-    // Charger les locataires du propriétaire
-    fetch(`/get-locataires/${proprietaireId}/`)
-      .then(response => response.json())
-      .then(data => {
-        data.forEach(loc => {
-          const option = document.createElement("option");
-          option.value = loc.id;
-          option.textContent = loc.nom;
-          locataireSelect.appendChild(option);
-        });
-      });
-});
-
-// Quand on choisit un locataire
-document.getElementById("id_locataire").addEventListener("change", function() {
-    const locataireId = this.value;
-    if (!locataireId) return;
-
-    // Charger le loyer du locataire
-    fetch(`/get-loyer/${locataireId}/`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.loyer) {
-          document.getElementById("id_montant").value = data.loyer;
+    // Recharge la page automatiquement quand on choisit un propriétaire
+    proprietaireSelect.addEventListener("change", function() {
+        const proprietaireId = this.value;
+        if (proprietaireId) {
+            window.location.href = "?proprietaire=" + proprietaireId;
+        } else {
+            window.location.href = window.location.pathname;
         }
-      });
+    });
 });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const proprietaireSelect = document.getElementById("id_proprietaire");
+
+    // Recharge la page automatiquement quand on choisit un propriétaire
+    proprietaireSelect.addEventListener("change", function() {
+        const proprietaireId = this.value;
+        if (proprietaireId) {
+            window.location.href = "?proprietaire=" + proprietaireId;
+        } else {
+            window.location.href = window.location.pathname;
+        }
+    });
+});
+</script>
+
+
 {% endblock %}

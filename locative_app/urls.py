@@ -13,8 +13,8 @@ urlpatterns = [
     path("dashboard-pdf/", views.dashboard_pdf, name="dashboard_pdf"),
     path("rapport-proprietaire/<int:proprietaire_id>/", views.rapport_proprietaire, name="rapport_proprietaire"),
     path("rapport-proprietaire-pdf/<int:proprietaire_id>/", views.rapport_proprietaire_pdf, name="rapport_proprietaire_pdf"),  # ✅ nouvelle route
-    path("get-locataires-nom/<str:proprietaire_nom>/", views.get_locataires_by_proprietaire_nom, name="get_locataires_nom"),
-    path("get-loyer/<int:locataire_id>/", views.get_loyer_locataire, name="get_loyer_locataire"),
+    path("get-locataires/<int:proprietaire_id>/", views.get_locataires, name="get_locataires"),
+    path("get-loyer/<int:locataire_id>/", views.get_loyer, name="get_loyer"),
 
     # ✅ routes pour modification/suppression
     path("proprietaire/modifier/<int:pk>/", views.modifier_proprietaire, name="modifier_proprietaire"),
