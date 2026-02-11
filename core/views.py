@@ -6,7 +6,7 @@ from reportlab.lib.units import cm
 from decimal import Decimal
 from .models import Proprietaire, Locataire, Paiement
 from .forms import ProprietaireForm, LocataireForm, PaiementForm
-
+from django.views.decorators.cache import cache_page
 
 
 
@@ -301,10 +301,13 @@ def accueil(request):
 
 
 
+@cache_page(60 * 5)  # cache 5 minutes
 def rapport_proprietaire(request, proprietaire_id):
-    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
+    ...
+
+    proprietaire = get_object_or_404(Proprietaire.objects.prefetch_related("locataires"), id=proprietaire_id)
     locataires = proprietaire.locataires.all()   # relation inverse correcte
-    paiements = Paiement.objects.filter(locataire__in=locataires)
+    paiements = Paiement.objects.filter(locataire__proprietaire=proprietaire).select_related("locataire")
 
     mois = request.GET.get("mois")
     mois_rapport = ""
