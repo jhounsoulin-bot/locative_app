@@ -303,7 +303,7 @@ def accueil(request):
 
 def rapport_proprietaire(request, proprietaire_id):
     proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    locataires = proprietaire.locataires.all()   # <-- correction ici
+    locataires = proprietaire.locataires.all()   # relation inverse correcte
     paiements = Paiement.objects.filter(locataire__in=locataires)
 
     mois = request.GET.get("mois")
@@ -466,7 +466,7 @@ def get_locataires_by_proprietaire_nom(request, proprietaire_nom):
 
 def rapport_proprietaire_pdf(request, proprietaire_id):
     proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    locataires = proprietaire.locataires.all()   # <-- correction ici
+    locataires = proprietaire.locataires.all()   # relation inverse correcte
     paiements = Paiement.objects.filter(locataire__in=locataires)
 
     mois = request.GET.get("mois")
@@ -482,16 +482,6 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     total_loyers = sum([l.loyer_mensuel for l in locataires])
     total_paye = sum([p.montant for p in paiements])
     commission = total_paye * Decimal("0.1")
-
-    # … reste de ton code PDF …
-
-    # Déterminer le mois du rapport
-    mois_rapport = ""
-    if mois:
-        mois_rapport = MOIS_FR[int(mois)]
-    elif paiements.exists():
-        mois_num = paiements.first().mois_concerne.month
-        mois_rapport = MOIS_FR[mois_num]
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="rapport_{proprietaire.nom}.pdf"'
@@ -559,6 +549,7 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     p.showPage()
     p.save()
     return response
+
 
 def get_locataires(request, proprietaire_id):
     locataires = Locataire.objects.filter(proprietaire_id=proprietaire_id)
