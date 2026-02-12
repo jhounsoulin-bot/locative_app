@@ -6,8 +6,11 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0013_fix_mois_concerne'),
-    ]
+    ('core', '0009_alter_locataire_proprietaire'),
+]
+
+
+
 
     operations = [
         migrations.AlterField(
