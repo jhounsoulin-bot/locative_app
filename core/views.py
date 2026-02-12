@@ -584,7 +584,7 @@ def rapport_global(request):
 
         # ✅ Filtrer par mois si sélectionné
         if mois:
-            paiements = paiements.filter(mois_concerne=int(mois))
+            paiements = paiements.filter(mois_concerne__month=int(mois))
 
         total_loyers = sum([l.loyer_mensuel for l in locataires])
         total_paye = sum([p.montant for p in paiements])
@@ -612,9 +612,8 @@ def rapport_global(request):
     return render(request, "core/rapport_global.html", context)
 
 
-
-
 def rapport_global_pdf(request):
+    mois = request.GET.get("mois")  # ✅ récupérer le mois sélectionné
     proprietaires = Proprietaire.objects.prefetch_related("locataires")
 
     response = HttpResponse(content_type='application/pdf')
@@ -626,7 +625,10 @@ def rapport_global_pdf(request):
 
     # Titre
     p.setFont("Helvetica-Bold", 16)
-    p.drawCentredString(width/2, height-50, "RAPPORT GLOBAL MENSUEL NIVAL IMPACT")
+    titre = "RAPPORT GLOBAL MENSUEL NIVAL IMPACT"
+    if mois:
+        titre += f" - {MOIS_FR[int(mois)]}"
+    p.drawCentredString(width/2, height-50, titre)
 
     # Position de départ
     y = height - 100
@@ -644,7 +646,6 @@ def rapport_global_pdf(request):
         p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, header)
 
     y -= row_height
-  
 
     # ✅ Totaux globaux
     total_loyers_global = 0
@@ -657,6 +658,10 @@ def rapport_global_pdf(request):
         locataires = proprietaire.locataires.all()
         paiements = Paiement.objects.filter(locataire__in=locataires)
 
+        # ✅ Filtrer par mois si sélectionné
+        if mois:
+            paiements = paiements.filter(mois_concerne__month=int(mois))
+
         total_loyers = sum([l.loyer_mensuel for l in locataires])
         total_paye = sum([p.montant for p in paiements])
         non_paye = total_loyers - total_paye
@@ -668,7 +673,7 @@ def rapport_global_pdf(request):
         total_non_paye_global += non_paye
         total_commission_global += commission
 
-        # ✅ Calculer la hauteur nécessaire pour la cellule locataires
+        # ✅ Locataires impayés
         locataires_non_payes = [l.nom for l in locataires if not paiements.filter(locataire=l).exists()]
         locataires_lines = locataires_non_payes if locataires_non_payes else ["✅ Tous ont payé"]
         cell_height = max(row_height, len(locataires_lines) * 12)
@@ -689,7 +694,7 @@ def rapport_global_pdf(request):
             else:
                 p.drawCentredString(col_x[i] + col_widths[i]/2, y + cell_height - 15, val)
 
-        # ✅ Colonne locataires impayés avec retour à la ligne
+        # ✅ Colonne locataires impayés
         p.rect(col_x[5], y, col_widths[5], cell_height, stroke=1, fill=0)
         text_obj = p.beginText(col_x[5] + 5, y + cell_height - 15)
         text_obj.setFont("Helvetica", 9)
@@ -697,7 +702,7 @@ def rapport_global_pdf(request):
             text_obj.textLine(line)
         p.drawText(text_obj)
 
-        # Descendre de la hauteur totale
+        # Descendre
         y -= cell_height
 
         # ✅ Nouvelle page si trop bas
@@ -711,7 +716,7 @@ def rapport_global_pdf(request):
             y -= row_height
             p.setFont("Helvetica", 10)
 
-    # ✅ Ligne de totaux globaux
+    # ✅ Totaux globaux
     cell_height = row_height
     p.setFont("Helvetica-Bold", 11)
     totals = [
@@ -720,7 +725,7 @@ def rapport_global_pdf(request):
         f"{total_paye_global:.2f}",
         f"{total_non_paye_global:.2f}",
         f"{total_commission_global:.2f}",
-        ""  # pas de locataires ici
+        ""
     ]
     for i, val in enumerate(totals):
         p.rect(col_x[i], y, col_widths[i], cell_height, stroke=1, fill=0)
@@ -737,6 +742,9 @@ def rapport_global_pdf(request):
     p.showPage()
     p.save()
     return response
+
+
+
 
 
 def liste_paiements(request):
