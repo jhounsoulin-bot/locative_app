@@ -61,7 +61,7 @@ class Paiement(models.Model):
         verbose_name="Locataire"
     )
     date_paiement = models.DateField(verbose_name="Date de paiement")
-    mois_concerne = models.IntegerField(choices=MOIS_CHOICES, verbose_name="Mois concerné")  # ✅ entier 1–12
+    mois_concerne = models.IntegerField(null=True, blank=True)  # ✅ entier 1–12
     montant = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Montant")
     paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
 
