@@ -66,5 +66,5 @@ class Paiement(models.Model):
     paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
 
     def __str__(self):
-        mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "")
+        mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne.month, "") if self.mois_concerne else ""
         return f"{self.locataire.nom} - {self.montant} FCFA ({mois_label} {self.date_paiement.year})"

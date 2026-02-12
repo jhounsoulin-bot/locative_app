@@ -474,91 +474,7 @@ def get_locataires_by_proprietaire_nom(request, proprietaire_nom):
     return JsonResponse(data, safe=False)
 
 
-def rapport_proprietaire_pdf(request, proprietaire_id):
-    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    locataires = proprietaire.locataires.all()   # relation inverse correcte
-    paiements = Paiement.objects.filter(locataire__in=locataires)
 
-    mois = request.GET.get("mois")
-    mois_rapport = ""
-    if mois:
-        mois_int = int(mois)
-        paiements = paiements.filter(mois_concerne__month=mois_int)
-        mois_rapport = MOIS_FR[mois_int]
-    elif paiements.exists():
-        mois_num = paiements.first().mois_concerne.month
-        mois_rapport = MOIS_FR[mois_num]
-
-    total_loyers = sum([l.loyer_mensuel for l in locataires])
-    total_paye = sum([p.montant for p in paiements])
-    commission = total_paye * Decimal("0.1")
-
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="rapport_{proprietaire.nom}.pdf"'
-
-    p = canvas.Canvas(response, pagesize=A4)
-    width, height = A4
-
-    # Titre
-    p.setFont("Helvetica-Bold", 16)
-    p.drawCentredString(width/2, height-50, "RAPPORT MENSUEL NIVAL IMPACT")
-
-    # Infos principales
-    y = height - 100
-    p.setFont("Helvetica", 12)
-    p.drawString(50, y, f"Propriétaire : {proprietaire.nom}")
-    y -= 20
-    p.drawString(50, y, f"Montant total loyers : {total_loyers} FCFA")
-    y -= 20
-    p.drawString(50, y, f"Montant total payé : {total_paye} FCFA")
-    y -= 20
-    p.drawString(50, y, f"Commission agence (10%) : {commission} FCFA")
-
-    # Tableau des locataires
-    y -= 40
-    row_height = 20
-    col_x = [2 * cm, 9 * cm, 14 * cm]
-    col_widths = [7 * cm, 5 * cm, 5 * cm]
-
-    # Entêtes
-    p.setFont("Helvetica-Bold", 12)
-    headers = ["Locataire", "Loyer", "Statut"]
-    for i, header in enumerate(headers):
-        p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
-        p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, header)
-
-    y -= row_height
-    p.setFont("Helvetica", 11)
-
-    # Lignes du tableau
-    for locataire in locataires:
-        paiement_existe = paiements.filter(locataire=locataire).exists()
-        statut = "Payé" if paiement_existe else "Non payé"
-
-        p.rect(col_x[0], y, col_widths[0], row_height, stroke=1, fill=0)
-        p.rect(col_x[1], y, col_widths[1], row_height, stroke=1, fill=0)
-        p.rect(col_x[2], y, col_widths[2], row_height, stroke=1, fill=0)
-
-        p.drawString(col_x[0] + 5, y + 5, locataire.nom)
-        p.drawString(col_x[1] + 5, y + 5, f"{locataire.loyer_mensuel} FCFA")
-        p.drawString(col_x[2] + 5, y + 5, statut)
-        y -= row_height
-
-    # Signatures
-    y -= 40
-    p.setFont("Helvetica", 12)
-    p.drawString(2 * cm, y, "Signature du gestionnaire")
-    p.drawString(width - 7 * cm, y, "Signature du propriétaire")
-
-    # Mois du rapport en bas
-    y -= 40
-    if mois_rapport:
-        p.setFont("Helvetica-Bold", 12)
-        p.drawCentredString(width/2, y, f"Mois du rapport : {mois_rapport}")
-
-    p.showPage()
-    p.save()
-    return response
 
 
 def get_locataires(request, proprietaire_id):
@@ -612,18 +528,111 @@ def rapport_global(request):
     return render(request, "core/rapport_global.html", context)
 
 
+def rapport_proprietaire_pdf(request, proprietaire_id):
+    mois = request.GET.get("mois")
+    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
+    locataires = proprietaire.locataires.all()
+    paiements = Paiement.objects.filter(locataire__in=locataires)
+
+    if mois:
+        paiements = paiements.filter(mois_concerne__month=int(mois))
+
+    # Totaux
+    total_loyers = sum([l.loyer_mensuel for l in locataires])
+    total_paye = sum([p.montant for p in paiements])
+    commission = total_paye * Decimal("0.1")
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="rapport_proprietaire_{proprietaire.nom}.pdf"'
+
+    p = canvas.Canvas(response, pagesize=A4)
+    width, height = A4
+
+    # ✅ Titre
+    p.setFont("Helvetica-Bold", 16)
+    p.drawCentredString(width/2, height-50, "RAPPORT MENSUEL NIVAL IMPACT")
+
+    # ✅ Mois du rapport juste en dessous
+    p.setFont("Helvetica", 12)
+    if mois:
+        try:
+            mois_num = int(mois)
+            p.drawCentredString(width/2, height-70, f"Mois du rapport : {MOIS_FR[mois_num]}")
+        except (ValueError, KeyError):
+            p.drawCentredString(width/2, height-70, "Mois du rapport : Invalide")
+    else:
+        p.drawCentredString(width/2, height-70, "Mois du rapport : Non spécifié")
+
+    # ✅ Infos propriétaire
+    p.setFont("Helvetica", 12)
+    p.drawString(50, height-100, f"Propriétaire : {proprietaire.nom}")
+    p.drawString(50, height-120, f"Montant total loyers : {total_loyers:.2f} FCFA")
+    p.drawString(50, height-140, f"Montant total payé : {total_paye:.2f} FCFA")
+    p.drawString(50, height-160, f"Commission agence (10%) : {commission:.2f} FCFA")
+
+    # ✅ Tableau des locataires
+    y = height - 200
+    row_height = 20
+    col_x = [50, 250, 400]
+    col_widths = [200, 150, 150]
+
+    headers = ["Locataire", "Loyer", "Statut"]
+    p.setFont("Helvetica-Bold", 12)
+    for i, header in enumerate(headers):
+        p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
+        p.drawCentredString(col_x[i] + col_widths[i]/2, y+5, header)
+
+    y -= row_height
+    p.setFont("Helvetica", 11)
+
+    for locataire in locataires:
+        loyer = locataire.loyer_mensuel
+        paiement = paiements.filter(locataire=locataire).first()
+        statut = "Payé" if paiement else "Non payé"
+
+        values = [locataire.nom, f"{loyer:.2f} FCFA", statut]
+        for i, val in enumerate(values):
+            p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
+            p.drawString(col_x[i]+5, y+5, val)
+
+        y -= row_height
+        if y < 100:
+            p.showPage()
+            y = height - 100
+
+    # ✅ Signatures
+    y -= 40
+    p.setFont("Helvetica", 12)
+    p.drawString(50, y, "Signature du gestionnaire")
+    p.drawString(width-200, y, "Signature du propriétaire")
+
+    p.showPage()
+    p.save()
+    return response
+
+
+
+
+
+
+
+def liste_paiements(request):
+    paiements = Paiement.objects.select_related("locataire", "proprietaire").all().order_by("-date_paiement")
+    return render(request, "core/liste_paiements.html", {"paiements": paiements})
+
+
+
 def rapport_global_pdf(request):
-    mois = request.GET.get("mois")  # ✅ récupérer le mois sélectionné
+    mois = request.GET.get("mois")
     proprietaires = Proprietaire.objects.prefetch_related("locataires")
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="rapport_global.pdf"'
 
-    # ✅ Format paysage
     p = canvas.Canvas(response, pagesize=landscape(A4))
     width, height = landscape(A4)
 
-    # Titre
+    # ✅ Titre
     p.setFont("Helvetica-Bold", 16)
     titre = "RAPPORT GLOBAL MENSUEL NIVAL IMPACT"
     if mois:
@@ -647,18 +656,17 @@ def rapport_global_pdf(request):
 
     y -= row_height
 
-    # ✅ Totaux globaux
+    # Totaux globaux
     total_loyers_global = 0
     total_paye_global = 0
     total_non_paye_global = 0
     total_commission_global = 0
 
-    # Données
+    # Données par propriétaire
     for proprietaire in proprietaires:
         locataires = proprietaire.locataires.all()
         paiements = Paiement.objects.filter(locataire__in=locataires)
 
-        # ✅ Filtrer par mois si sélectionné
         if mois:
             paiements = paiements.filter(mois_concerne__month=int(mois))
 
@@ -667,18 +675,15 @@ def rapport_global_pdf(request):
         non_paye = total_loyers - total_paye
         commission = total_paye * Decimal("0.1")
 
-        # ✅ Ajouter aux totaux globaux
         total_loyers_global += total_loyers
         total_paye_global += total_paye
         total_non_paye_global += non_paye
         total_commission_global += commission
 
-        # ✅ Locataires impayés
         locataires_non_payes = [l.nom for l in locataires if not paiements.filter(locataire=l).exists()]
         locataires_lines = locataires_non_payes if locataires_non_payes else ["✅ Tous ont payé"]
         cell_height = max(row_height, len(locataires_lines) * 12)
 
-        # Colonnes normales
         values = [
             proprietaire.nom,
             f"{total_loyers:.2f}",
@@ -689,12 +694,12 @@ def rapport_global_pdf(request):
 
         for i, val in enumerate(values):
             p.rect(col_x[i], y, col_widths[i], cell_height, stroke=1, fill=0)
-            if i == 0:  # Propriétaire
+            if i == 0:
                 p.drawString(col_x[i] + 5, y + cell_height - 15, val)
             else:
                 p.drawCentredString(col_x[i] + col_widths[i]/2, y + cell_height - 15, val)
 
-        # ✅ Colonne locataires impayés
+        # Colonne locataires impayés
         p.rect(col_x[5], y, col_widths[5], cell_height, stroke=1, fill=0)
         text_obj = p.beginText(col_x[5] + 5, y + cell_height - 15)
         text_obj.setFont("Helvetica", 9)
@@ -702,10 +707,8 @@ def rapport_global_pdf(request):
             text_obj.textLine(line)
         p.drawText(text_obj)
 
-        # Descendre
         y -= cell_height
 
-        # ✅ Nouvelle page si trop bas
         if y < 100:
             p.showPage()
             y = height - 100
@@ -716,8 +719,7 @@ def rapport_global_pdf(request):
             y -= row_height
             p.setFont("Helvetica", 10)
 
-    # ✅ Totaux globaux
-    cell_height = row_height
+    # Totaux globaux
     p.setFont("Helvetica-Bold", 11)
     totals = [
         "TOTAL GLOBAL",
@@ -728,10 +730,10 @@ def rapport_global_pdf(request):
         ""
     ]
     for i, val in enumerate(totals):
-        p.rect(col_x[i], y, col_widths[i], cell_height, stroke=1, fill=0)
+        p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
         p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, val)
 
-    y -= cell_height
+    y -= row_height
 
     # Signatures
     y -= 40
@@ -742,15 +744,6 @@ def rapport_global_pdf(request):
     p.showPage()
     p.save()
     return response
-
-
-
-
-
-def liste_paiements(request):
-    paiements = Paiement.objects.select_related("locataire", "proprietaire").all().order_by("-date_paiement")
-    return render(request, "core/liste_paiements.html", {"paiements": paiements})
-
 
 
 
