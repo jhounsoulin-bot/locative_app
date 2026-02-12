@@ -7,7 +7,7 @@ from decimal import Decimal
 from .models import Proprietaire, Locataire, Paiement
 from .forms import ProprietaireForm, LocataireForm, PaiementForm
 from django.views.decorators.cache import cache_page
-from django.db import migrations
+
 
 
 
@@ -746,35 +746,6 @@ def liste_paiements(request):
 
 
 
-
-def convert_mois(apps, schema_editor):
-    Paiement = apps.get_model("core", "Paiement")
-    for p in Paiement.objects.all():
-        try:
-            # Si c'était une date, on prend le mois
-            if hasattr(p.mois_concerne, "month"):
-                p.mois_concerne = p.mois_concerne.month
-            else:
-                # Si c'était une chaîne "2026-02-01"
-                p.mois_concerne = int(str(p.mois_concerne)[5:7])
-            p.save()
-        except Exception:
-            p.mois_concerne = None
-            p.save()
-
-class Migration(migrations.Migration):
-    dependencies = [
-        ("core", "0009_alter_locataire_proprietaire"),
-    ]
-
-    operations = [
-        migrations.AlterField(
-            model_name="paiement",
-            name="mois_concerne",
-            field=migrations.models.IntegerField(null=True, blank=True),
-        ),
-        migrations.RunPython(convert_mois),
-    ]
 
 
 
