@@ -40,10 +40,22 @@ class LocataireForm(forms.ModelForm):
         }
 
 
-# ✅ Widget personnalisé pour mois/année
-class MonthYearWidget(forms.DateInput):
-    input_type = "month"
 
+
+MOIS_CHOICES = [
+    ("1", "Janvier"),
+    ("2", "Février"),
+    ("3", "Mars"),
+    ("4", "Avril"),
+    ("5", "Mai"),
+    ("6", "Juin"),
+    ("7", "Juillet"),
+    ("8", "Août"),
+    ("9", "Septembre"),
+    ("10", "Octobre"),
+    ("11", "Novembre"),
+    ("12", "Décembre"),
+]
 
 class PaiementForm(forms.ModelForm):
     proprietaire = forms.ModelChoiceField(
@@ -53,10 +65,15 @@ class PaiementForm(forms.ModelForm):
         widget=forms.Select(attrs={"class": "form-select", "id": "id_proprietaire"})
     )
     locataire = forms.ModelChoiceField(
-        queryset=Locataire.objects.none(),  # vide par défaut
+        queryset=Locataire.objects.none(),
         required=True,
         label="Locataire",
         widget=forms.Select(attrs={"class": "form-select", "id": "id_locataire"})
+    )
+    mois_concerne = forms.ChoiceField(
+        choices=MOIS_CHOICES,
+        label="Mois concerné",
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_mois_concerne"})
     )
 
     class Meta:
@@ -64,17 +81,14 @@ class PaiementForm(forms.ModelForm):
         fields = ["proprietaire", "locataire", "date_paiement", "mois_concerne", "montant", "paye_en_avance"]
         widgets = {
             "date_paiement": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "mois_concerne": MonthYearWidget(attrs={"class": "form-control", "id": "id_mois_concerne"}),
             "montant": forms.NumberInput(attrs={"class": "form-control", "id": "id_montant"}),
             "paye_en_avance": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_paye_en_avance"}),
         }
 
     def __init__(self, *args, **kwargs):
-        proprietaire_id = kwargs.pop("proprietaire_id", None)  # récupère l'ID du propriétaire
+        proprietaire_id = kwargs.pop("proprietaire_id", None)
         super().__init__(*args, **kwargs)
         if proprietaire_id:
-            # ✅ ne propose que les locataires du propriétaire choisi
             self.fields["locataire"].queryset = Locataire.objects.filter(proprietaire_id=proprietaire_id)
         else:
-            # ✅ sinon propose tous les locataires
             self.fields["locataire"].queryset = Locataire.objects.all()

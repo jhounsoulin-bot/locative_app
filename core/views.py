@@ -1,12 +1,13 @@
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape   # ✅ ajout du paysage
 from reportlab.lib.units import cm
 from decimal import Decimal
 from .models import Proprietaire, Locataire, Paiement
 from .forms import ProprietaireForm, LocataireForm, PaiementForm
 from django.views.decorators.cache import cache_page
+
 
 
 
@@ -364,23 +365,29 @@ def ajouter_locataire(request):
 
 
 
+
+
 def ajouter_paiement(request):
     proprietaire_id = request.GET.get("proprietaire")
 
     if request.method == "POST":
         form = PaiementForm(request.POST, proprietaire_id=proprietaire_id)
         if form.is_valid():
-            form.save()
+            paiement = form.save()
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({"success": True, "id": paiement.id})
             return redirect("accueil")
+        else:
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({"success": False, "errors": form.errors}, status=400)
     else:
         form = PaiementForm(proprietaire_id=proprietaire_id)
 
-    context = {
-        "form": form,
-        "proprietaires": Proprietaire.objects.all(),
-        "proprietaire_id": proprietaire_id,  # pour garder la sélection
-    }
-    return render(request, "core/ajouter_paiement.html", context)
+    return render(request, "core/ajouter_paiement.html", {"form": form})
+
+
+
+
 
 
 def paiement_create(request, proprietaire_id):
@@ -558,6 +565,184 @@ def get_locataires(request, proprietaire_id):
     locataires = Locataire.objects.filter(proprietaire_id=proprietaire_id)
     data = [{"id": l.id, "nom": l.nom} for l in locataires]
     return JsonResponse({"locataires": data})
+
+
+
+MOIS_FR = { 1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril", 
+           5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août", 
+           9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre" 
+        }
+
+def rapport_global(request):
+    mois = request.GET.get("mois")
+    proprietaires = Proprietaire.objects.prefetch_related("locataires")
+    data = []
+
+    for proprietaire in proprietaires:
+        locataires = proprietaire.locataires.all()
+        paiements = Paiement.objects.filter(locataire__in=locataires)
+
+        # ✅ Filtrer par mois si sélectionné
+        if mois:
+            paiements = paiements.filter(mois_concerne=int(mois))
+
+        total_loyers = sum([l.loyer_mensuel for l in locataires])
+        total_paye = sum([p.montant for p in paiements])
+        commission = total_paye * Decimal("0.1")
+
+        locataires_non_payes = [
+            l.nom for l in locataires
+            if not paiements.filter(locataire=l).exists()
+        ]
+
+        data.append({
+            "proprietaire": proprietaire.nom,
+            "total_loyers": total_loyers,
+            "total_paye": total_paye,
+            "non_paye": total_loyers - total_paye,
+            "commission": commission,
+            "locataires_non_payes": locataires_non_payes,
+        })
+
+    context = {
+        "rapport": data,
+        "mois_list": [(i, MOIS_FR[i]) for i in range(1, 13)],
+        "mois": mois,
+    }
+    return render(request, "core/rapport_global.html", context)
+
+
+
+
+def rapport_global_pdf(request):
+    proprietaires = Proprietaire.objects.prefetch_related("locataires")
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="rapport_global.pdf"'
+
+    # ✅ Format paysage
+    p = canvas.Canvas(response, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    # Titre
+    p.setFont("Helvetica-Bold", 16)
+    p.drawCentredString(width/2, height-50, "RAPPORT GLOBAL MENSUEL NIVAL IMPACT")
+
+    # Position de départ
+    y = height - 100
+    row_height = 20
+
+    # Colonnes
+    col_x = [1 * cm, 7 * cm, 11 * cm, 15 * cm, 19 * cm, 23 * cm]
+    col_widths = [6 * cm, 4 * cm, 4 * cm, 4 * cm, 4 * cm, 8 * cm]
+
+    # En-têtes
+    p.setFont("Helvetica-Bold", 12)
+    headers = ["Propriétaire", "Total loyers", "Total payé", "Non payé", "Commission", "Locataires non payés"]
+    for i, header in enumerate(headers):
+        p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
+        p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, header)
+
+    y -= row_height
+  
+
+    # ✅ Totaux globaux
+    total_loyers_global = 0
+    total_paye_global = 0
+    total_non_paye_global = 0
+    total_commission_global = 0
+
+    # Données
+    for proprietaire in proprietaires:
+        locataires = proprietaire.locataires.all()
+        paiements = Paiement.objects.filter(locataire__in=locataires)
+
+        total_loyers = sum([l.loyer_mensuel for l in locataires])
+        total_paye = sum([p.montant for p in paiements])
+        non_paye = total_loyers - total_paye
+        commission = total_paye * Decimal("0.1")
+
+        # ✅ Ajouter aux totaux globaux
+        total_loyers_global += total_loyers
+        total_paye_global += total_paye
+        total_non_paye_global += non_paye
+        total_commission_global += commission
+
+        # ✅ Calculer la hauteur nécessaire pour la cellule locataires
+        locataires_non_payes = [l.nom for l in locataires if not paiements.filter(locataire=l).exists()]
+        locataires_lines = locataires_non_payes if locataires_non_payes else ["✅ Tous ont payé"]
+        cell_height = max(row_height, len(locataires_lines) * 12)
+
+        # Colonnes normales
+        values = [
+            proprietaire.nom,
+            f"{total_loyers:.2f}",
+            f"{total_paye:.2f}",
+            f"{non_paye:.2f}",
+            f"{commission:.2f}"
+        ]
+
+        for i, val in enumerate(values):
+            p.rect(col_x[i], y, col_widths[i], cell_height, stroke=1, fill=0)
+            if i == 0:  # Propriétaire
+                p.drawString(col_x[i] + 5, y + cell_height - 15, val)
+            else:
+                p.drawCentredString(col_x[i] + col_widths[i]/2, y + cell_height - 15, val)
+
+        # ✅ Colonne locataires impayés avec retour à la ligne
+        p.rect(col_x[5], y, col_widths[5], cell_height, stroke=1, fill=0)
+        text_obj = p.beginText(col_x[5] + 5, y + cell_height - 15)
+        text_obj.setFont("Helvetica", 9)
+        for line in locataires_lines:
+            text_obj.textLine(line)
+        p.drawText(text_obj)
+
+        # Descendre de la hauteur totale
+        y -= cell_height
+
+        # ✅ Nouvelle page si trop bas
+        if y < 100:
+            p.showPage()
+            y = height - 100
+            p.setFont("Helvetica-Bold", 12)
+            for i, header in enumerate(headers):
+                p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
+                p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, header)
+            y -= row_height
+            p.setFont("Helvetica", 10)
+
+    # ✅ Ligne de totaux globaux
+    cell_height = row_height
+    p.setFont("Helvetica-Bold", 11)
+    totals = [
+        "TOTAL GLOBAL",
+        f"{total_loyers_global:.2f}",
+        f"{total_paye_global:.2f}",
+        f"{total_non_paye_global:.2f}",
+        f"{total_commission_global:.2f}",
+        ""  # pas de locataires ici
+    ]
+    for i, val in enumerate(totals):
+        p.rect(col_x[i], y, col_widths[i], cell_height, stroke=1, fill=0)
+        p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, val)
+
+    y -= cell_height
+
+    # Signatures
+    y -= 40
+    p.setFont("Helvetica", 12)
+    p.drawString(2 * cm, y, "Signature du gestionnaire")
+    p.drawString(width - 7 * cm, y, "Signature du propriétaire")
+
+    p.showPage()
+    p.save()
+    return response
+
+
+def liste_paiements(request):
+    paiements = Paiement.objects.select_related("locataire", "proprietaire").all().order_by("-date_paiement")
+    return render(request, "core/liste_paiements.html", {"paiements": paiements})
+
 
 
 

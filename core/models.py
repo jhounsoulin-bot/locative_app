@@ -1,6 +1,5 @@
 from django.db import models
 
-
 class Ville(models.Model):
     nom = models.CharField(max_length=100)
 
@@ -23,7 +22,7 @@ class Locataire(models.Model):
     proprietaire = models.ForeignKey(
         Proprietaire,
         on_delete=models.CASCADE,
-        related_name="locataires",   # ✅ permet d'accéder aux locataires via proprietaire.locataires.all()
+        related_name="locataires",   # ✅ accès via proprietaire.locataires.all()
         verbose_name="Propriétaire"
     )
 
@@ -32,6 +31,21 @@ class Locataire(models.Model):
 
 
 class Paiement(models.Model):
+    MOIS_CHOICES = [
+        (1, "Janvier"),
+        (2, "Février"),
+        (3, "Mars"),
+        (4, "Avril"),
+        (5, "Mai"),
+        (6, "Juin"),
+        (7, "Juillet"),
+        (8, "Août"),
+        (9, "Septembre"),
+        (10, "Octobre"),
+        (11, "Novembre"),
+        (12, "Décembre"),
+    ]
+
     proprietaire = models.ForeignKey(
         Proprietaire,
         on_delete=models.CASCADE,
@@ -47,9 +61,10 @@ class Paiement(models.Model):
         verbose_name="Locataire"
     )
     date_paiement = models.DateField(verbose_name="Date de paiement")
-    mois_concerne = models.DateField(verbose_name="Mois concerné")
+    mois_concerne = models.IntegerField(choices=MOIS_CHOICES, verbose_name="Mois concerné")  # ✅ entier 1–12
     montant = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Montant")
     paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
 
     def __str__(self):
-        return f"{self.locataire.nom} - {self.montant} ({self.date_paiement})"
+        mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "")
+        return f"{self.locataire.nom} - {self.montant} FCFA ({mois_label} {self.date_paiement.year})"

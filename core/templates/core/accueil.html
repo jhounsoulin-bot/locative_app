@@ -12,12 +12,16 @@
     <!-- Titre principal -->
     <h1 class="mb-4">🏠 Gestion Locative NIVAL IMPACT</h1>
 
+         
     <!-- Boutons d'ajout -->
     <div class="mb-4">
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalProprietaire">➕ Ajouter un propriétaire</button>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLocataire">➕ Ajouter un locataire</button>
-        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalPaiement">💰 Enregistrer un paiement</button>
-    </div>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalProprietaire">➕ Ajouter un propriétaire</button>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLocataire">➕ Ajouter un locataire</button>
+    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalPaiement">💰 Enregistrer un paiement</button>
+</div>
+
+     
+   
 
     <!-- Modal Ajouter Propriétaire -->
     <div class="modal fade" id="modalProprietaire" tabindex="-1">
@@ -70,44 +74,46 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <form method="post" action="{% url 'ajouter_paiement' %}">
+        <form id="paiementForm" method="post">
           {% csrf_token %}
 
-          
-
-          <div class="mb-3">
+          <!-- Propriétaire -->
+<div class="mb-3">
   <label for="id_proprietaire" class="form-label">Propriétaire</label>
   {{ paiement_form.proprietaire }}
+  <button type="button" id="btn-filtrer" class="btn btn-secondary ms-2">Filtrer</button>
 </div>
 
+<!-- Locataire -->
 <div class="mb-3">
   <label for="id_locataire" class="form-label">Locataire</label>
   {{ paiement_form.locataire }}
 </div>
 
+<!-- Montant -->
+<div class="mb-3">
+  <label for="id_montant" class="form-label">Montant</label>
+  {{ paiement_form.montant }}
+</div>
 
+<!-- Date de paiement -->
+<div class="mb-3">
+  <label for="id_date_paiement" class="form-label">Date de paiement</label>
+  {{ paiement_form.date_paiement }}
+</div>
 
+<!-- Mois concerné -->
+<div class="mb-3">
+  <label for="id_mois_concerne" class="form-label">Mois concerné</label>
+  {{ paiement_form.mois_concerne }}
+</div>
 
-          <!-- Montant -->
-          <div class="mb-3">
-            {{ paiement_form.montant }}
-          </div>
+<!-- Payé en avance -->
+<div class="form-check mb-3">
+  {{ paiement_form.paye_en_avance }}
+  <label class="form-check-label" for="id_paye_en_avance">Payé en avance</label>
+</div>
 
-          <!-- Date de paiement -->
-          <div class="mb-3">
-            {{ paiement_form.date_paiement }}
-          </div>
-
-          <!-- Mois concerné -->
-          <div class="mb-3">
-            {{ paiement_form.mois_concerne }}
-          </div>
-
-          <!-- Payé en avance -->
-          <div class="form-check mb-3">
-            {{ paiement_form.paye_en_avance }}
-            <label class="form-check-label" for="id_paye_en_avance">Payé en avance</label>
-          </div>
 
           <div class="mt-3 text-end">
             <button type="submit" class="btn btn-warning">✅ Enregistrer</button>
@@ -119,6 +125,37 @@
 </div>
 
 
+<!-- Script AJAX -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const paiementForm = document.getElementById("paiementForm");
+
+    paiementForm.addEventListener("submit", function(e) {
+        e.preventDefault(); // Empêche le rechargement de la page
+
+        const formData = new FormData(paiementForm);
+
+        fetch("{% url 'ajouter_paiement' %}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                alert("✅ Paiement enregistré avec succès !");
+                const modal = bootstrap.Modal.getInstance(document.getElementById("modalPaiement"));
+                modal.hide();
+                window.location.reload(); // recharge le tableau
+            } else {
+                alert("❌ Erreur lors de l'enregistrement");
+            }
+        })
+        .catch(err => console.error("Erreur AJAX :", err));
+    });
+});
+</script>
 
     <!-- Filtre par mois -->
     <form method="get" class="mb-4">
@@ -145,6 +182,26 @@
 <button class="btn btn-danger mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#nonPayesList">
   📌 Locataires non payés ({{ non_payes_count }})
 </button>
+
+
+
+<div class="mb-4">
+  <!-- Bouton voir paiements -->
+  <a href="{% url 'liste_paiements' %}" class="btn btn-info me-2">
+    💰 Voir les paiements
+  </a>
+
+  <!-- Bouton rapport global -->
+  <a href="{% url 'rapport_global' %}" class="btn btn-primary me-2">
+    📊 Rapport global
+  </a>
+
+  <!-- Bouton rapport global PDF -->
+  <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger">
+    📄 Télécharger rapport global en PDF
+  </a>
+</div>
+
 
 <!-- Liste des locataires non payés (cachée par défaut) -->
 <div class="collapse" id="nonPayesList">
@@ -302,40 +359,43 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    const btnFiltrer = document.getElementById("btn-filtrer");
     const proprietaireSelect = document.getElementById("id_proprietaire");
-
-    // Recharge la page automatiquement quand on choisit un propriétaire
-    proprietaireSelect.addEventListener("change", function() {
-        const proprietaireId = this.value;
-        if (proprietaireId) {
-            window.location.href = "?proprietaire=" + proprietaireId;
-        } else {
-            window.location.href = window.location.pathname;
-        }
-    });
-});
-</script>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const proprietaireSelect = document.getElementById("id_proprietaire");
-
-    // Recharge la page automatiquement quand on choisit un propriétaire
-    proprietaireSelect.addEventListener("change", function() {
-        const proprietaireId = this.value;
-        if (proprietaireId) {
-            window.location.href = "?proprietaire=" + proprietaireId;
-        } else {
-            window.location.href = window.location.pathname;
-        }
-    });
-});
-</script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
     const locataireSelect = document.getElementById("id_locataire");
     const montantField = document.getElementById("id_montant");
 
+    // Bouton Filtrer : charge les locataires du propriétaire choisi
+    btnFiltrer.addEventListener("click", function() {
+        const proprietaireId = proprietaireSelect.value;
+
+        if (!proprietaireId || proprietaireId === "") {
+            alert("Veuillez choisir un propriétaire !");
+            return;
+        }
+
+        fetch(`/get-locataires/${proprietaireId}/`)
+          .then(response => response.json())
+          .then(data => {
+              locataireSelect.innerHTML = ""; // vider la liste
+
+              if (data.locataires.length === 0) {
+                  const option = document.createElement("option");
+                  option.value = "";
+                  option.textContent = "Aucun locataire trouvé";
+                  locataireSelect.appendChild(option);
+              } else {
+                  data.locataires.forEach(locataire => {
+                      const option = document.createElement("option");
+                      option.value = locataire.id;
+                      option.textContent = locataire.nom;
+                      locataireSelect.appendChild(option);
+                  });
+              }
+          })
+          .catch(error => console.error("Erreur fetch locataires :", error));
+    });
+
+    // Quand on choisit un locataire, remplir automatiquement le montant
     locataireSelect.addEventListener("change", function() {
         const locataireId = this.value;
         if (!locataireId) return;
@@ -350,12 +410,9 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
+
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-
-
-
-
 
 
 
