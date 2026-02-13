@@ -535,7 +535,7 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     paiements = Paiement.objects.filter(locataire__in=locataires)
 
     if mois:
-        paiements = paiements.filter(mois_concerne__month=int(mois))
+        paiements = paiements.filter(mois_concerne=int(mois))
 
     # Totaux
     total_loyers = sum([l.loyer_mensuel for l in locataires])
@@ -616,6 +616,7 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
 
 
 
+
 def liste_paiements(request):
     paiements = Paiement.objects.select_related("locataire", "proprietaire").all().order_by("-date_paiement")
     return render(request, "core/liste_paiements.html", {"paiements": paiements})
@@ -635,8 +636,14 @@ def rapport_global_pdf(request):
     # ✅ Titre
     p.setFont("Helvetica-Bold", 16)
     titre = "RAPPORT GLOBAL MENSUEL NIVAL IMPACT"
-    if mois:
-        titre += f" - {MOIS_FR[int(mois)]}"
+    if mois and mois.isdigit():
+        try:
+            mois_num = int(mois)
+            titre += f" - {MOIS_FR[mois_num]}"
+        except (ValueError, KeyError):
+            titre += " - Mois invalide"
+    else:
+        titre += " - Non spécifié"
     p.drawCentredString(width/2, height-50, titre)
 
     # Position de départ
@@ -667,8 +674,8 @@ def rapport_global_pdf(request):
         locataires = proprietaire.locataires.all()
         paiements = Paiement.objects.filter(locataire__in=locataires)
 
-        if mois:
-            paiements = paiements.filter(mois_concerne__month=int(mois))
+        if mois and mois.isdigit():
+            paiements = paiements.filter(mois_concerne=int(mois))
 
         total_loyers = sum([l.loyer_mensuel for l in locataires])
         total_paye = sum([p.montant for p in paiements])
@@ -744,6 +751,7 @@ def rapport_global_pdf(request):
     p.showPage()
     p.save()
     return response
+
 
 
 

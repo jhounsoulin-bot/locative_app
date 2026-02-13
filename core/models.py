@@ -61,10 +61,15 @@ class Paiement(models.Model):
         verbose_name="Locataire"
     )
     date_paiement = models.DateField(verbose_name="Date de paiement")
-    mois_concerne = models.DateField(null=True, blank=True)
+    mois_concerne = models.IntegerField(
+        choices=MOIS_CHOICES,
+        verbose_name="Mois concerné",
+        null=True,
+        blank=True
+    )
     montant = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Montant")
     paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
 
     def __str__(self):
-        mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne.month, "") if self.mois_concerne else ""
+        mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "")
         return f"{self.locataire.nom} - {self.montant} FCFA ({mois_label} {self.date_paiement.year})"

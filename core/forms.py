@@ -1,5 +1,6 @@
 from django import forms
 from .models import Proprietaire, Locataire, Paiement
+import datetime
 
 class ProprietaireForm(forms.ModelForm):
     class Meta:
@@ -70,9 +71,10 @@ class PaiementForm(forms.ModelForm):
         label="Locataire",
         widget=forms.Select(attrs={"class": "form-select", "id": "id_locataire"})
     )
-    mois_concerne = forms.DateField(
+    mois_concerne = forms.ChoiceField(
+        choices=Paiement.MOIS_CHOICES,
         label="Mois concerné",
-        widget=forms.DateInput(attrs={"type": "date", "class": "form-control", "id": "id_mois_concerne"})
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_mois_concerne"})
     )
 
     class Meta:
@@ -91,4 +93,3 @@ class PaiementForm(forms.ModelForm):
             self.fields["locataire"].queryset = Locataire.objects.filter(proprietaire_id=proprietaire_id)
         else:
             self.fields["locataire"].queryset = Locataire.objects.all()
-
