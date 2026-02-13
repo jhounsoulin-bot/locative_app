@@ -2,13 +2,18 @@ import os
 from pathlib import Path
 import dj_database_url
 
+
+
+# Render deployment fix
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Clé secrète (toujours via variable d'environnement en prod)
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-default")
 
+
+
 # DEBUG : False en production
-DEBUG = os.environ.get("DEBUG", "True") == "True"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # Hôtes autorisés (inclure ton domaine Render)
 ALLOWED_HOSTS = [
