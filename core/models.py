@@ -22,7 +22,7 @@ class Locataire(models.Model):
     proprietaire = models.ForeignKey(
         Proprietaire,
         on_delete=models.CASCADE,
-        related_name="locataires",   # ✅ accès via proprietaire.locataires.all()
+        related_name="locataires",
         verbose_name="Propriétaire"
     )
 
@@ -50,9 +50,7 @@ class Paiement(models.Model):
         Proprietaire,
         on_delete=models.CASCADE,
         related_name="paiements",
-        verbose_name="Propriétaire",
-        null=True,
-        blank=True
+        verbose_name="Propriétaire"
     )
     locataire = models.ForeignKey(
         Locataire,
@@ -67,9 +65,9 @@ class Paiement(models.Model):
         null=True,
         blank=True
     )
-    montant = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Montant")
+    montant = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Montant")
     paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
 
     def __str__(self):
-        mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "")
+        mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "Mois inconnu")
         return f"{self.locataire.nom} - {self.montant} FCFA ({mois_label} {self.date_paiement.year})"

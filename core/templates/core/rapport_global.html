@@ -14,8 +14,8 @@
     <label for="mois">Filtrer par mois :</label>
     <select name="mois" id="mois" class="form-select w-auto d-inline-block">
       <option value="">Tous</option>
-      {% for i, mois in mois_list %}
-        <option value="{{ i }}" {% if request.GET.mois == i|stringformat:"s" %}selected{% endif %}>{{ mois }}</option>
+      {% for i, nom in mois_list %}
+        <option value="{{ i }}" {% if mois == i|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
       {% endfor %}
     </select>
     <button type="submit" class="btn btn-primary">Filtrer</button>
@@ -37,10 +37,10 @@
       {% for item in rapport %}
       <tr>
         <td>{{ item.proprietaire }}</td>
-        <td>{{ item.total_loyers }} FCFA</td>
-        <td>{{ item.total_paye }} FCFA</td>
-        <td>{{ item.non_paye }} FCFA</td>
-        <td>{{ item.commission }} FCFA</td>
+        <td>{{ item.total_loyers|floatformat:2 }} FCFA</td>
+        <td>{{ item.total_paye|floatformat:2 }} FCFA</td>
+        <td>{{ item.non_paye|floatformat:2 }} FCFA</td>
+        <td>{{ item.commission|floatformat:2 }} FCFA</td>
         <td>
           {% if item.locataires_non_payes %}
             {{ item.locataires_non_payes|join:", " }}
@@ -58,7 +58,7 @@
   </table>
 
   <!-- Bouton PDF -->
-  <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger mt-3">📄 Télécharger en PDF</a>
+  <a href="{% url 'rapport_global_pdf' %}{% if mois %}?mois={{ mois }}{% endif %}" class="btn btn-danger mt-3">📄 Télécharger en PDF</a>
 
 </body>
 </html>

@@ -40,36 +40,27 @@
         <label for="mois">Choisir un mois :</label>
         <select name="mois" id="mois" onchange="this.form.submit()">
             <option value="">-- Tous les mois --</option>
-            <option value="1" {% if mois == '1' %}selected{% endif %}>Janvier</option>
-            <option value="2" {% if mois == '2' %}selected{% endif %}>Février</option>
-            <option value="3" {% if mois == '3' %}selected{% endif %}>Mars</option>
-            <option value="4" {% if mois == '4' %}selected{% endif %}>Avril</option>
-            <option value="5" {% if mois == '5' %}selected{% endif %}>Mai</option>
-            <option value="6" {% if mois == '6' %}selected{% endif %}>Juin</option>
-            <option value="7" {% if mois == '7' %}selected{% endif %}>Juillet</option>
-            <option value="8" {% if mois == '8' %}selected{% endif %}>Août</option>
-            <option value="9" {% if mois == '9' %}selected{% endif %}>Septembre</option>
-            <option value="10" {% if mois == '10' %}selected{% endif %}>Octobre</option>
-            <option value="11" {% if mois == '11' %}selected{% endif %}>Novembre</option>
-            <option value="12" {% if mois == '12' %}selected{% endif %}>Décembre</option>
+            {% for num, nom in mois_list %}
+                <option value="{{ num }}" {% if mois == num|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
+            {% endfor %}
         </select>
     </form>
 
     <!-- Bouton Export PDF -->
     <p>
-        <a href="{% url 'dashboard_pdf' %}?mois={{ mois }}{% if proprietaire %}&proprietaire={{ proprietaire.id }}{% endif %}" target="_blank">
+        <a href="{% url 'dashboard_pdf' %}{% if mois %}?mois={{ mois }}{% endif %}{% if proprietaire %}&proprietaire={{ proprietaire.id }}{% endif %}" target="_blank">
             📄 Exporter en PDF
         </a>
     </p>
 
     <!-- Statistiques -->
     <ul>
-        <li>Nombre de propriétaires : {{ proprietaires_count }}</li>
-        <li>Nombre de locataires : {{ locataires_count }}</li>
-        <li>Montant total loyers locataires : {{ total_loyers_locataires }}</li>
-        <li>Total loyers reçus : {{ total_recu }}</li>
-        <li>Loyer restant (impayés) : {{ loyer_restant }}</li>
-        <li>Commission totale entreprise : {{ commission_totale }}</li>
+        <li>Nombre de propriétaires : {{ proprietaires_count|default:0 }}</li>
+        <li>Nombre de locataires : {{ locataires_count|default:0 }}</li>
+        <li>Montant total loyers locataires : {{ total_loyers_locataires|default:0 }}</li>
+        <li>Total loyers reçus : {{ total_recu|default:0 }}</li>
+        <li>Loyer restant (impayés) : {{ loyer_restant|default:0 }}</li>
+        <li>Commission totale entreprise : {{ commission_totale|default:0 }}</li>
     </ul>
 
     <!-- Graphiques -->
@@ -87,10 +78,10 @@
                 datasets: [{
                     label: 'Montants (FCFA)',
                     data: [
-                        {{ total_loyers_locataires }},
-                        {{ total_recu }},
-                        {{ loyer_restant }},
-                        {{ commission_totale }}
+                        {{ total_loyers_locataires|default:0 }},
+                        {{ total_recu|default:0 }},
+                        {{ loyer_restant|default:0 }},
+                        {{ commission_totale|default:0 }}
                     ],
                     backgroundColor: ['green', 'blue', 'orange', 'purple']
                 }]
@@ -103,7 +94,7 @@
             data: {
                 labels: ['Payés', 'Impayés'],
                 datasets: [{
-                    data: [{{ locataires_payes }}, {{ locataires_impayes }}],
+                    data: [{{ locataires_payes|default:0 }}, {{ locataires_impayes|default:0 }}],
                     backgroundColor: ['green', 'red']
                 }]
             }
@@ -112,28 +103,28 @@
 
     <!-- Tableau des locataires -->
     <h2>📋 Détail des locataires</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Locataire</th>
-            <th>Montant payé</th>
-            <th>Statut</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for locataire in locataires_data %}
+    <table>
+        <thead>
             <tr>
-                <td>{{ locataire.nom }}</td>
-                <td>{{ locataire.montant }}</td>
-                <td>{{ locataire.statut }}</td>
+                <th>Locataire</th>
+                <th>Montant payé</th>
+                <th>Statut</th>
             </tr>
-        {% empty %}
-            <tr>
-                <td colspan="3">Aucun locataire trouvé</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            {% for locataire in locataires_data %}
+                <tr>
+                    <td>{{ locataire.nom }}</td>
+                    <td>{{ locataire.montant|default:0 }}</td>
+                    <td>{{ locataire.statut }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="3">Aucun locataire trouvé</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
 </body>
 </html>

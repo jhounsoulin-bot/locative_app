@@ -1,6 +1,5 @@
 from django import forms
 from .models import Proprietaire, Locataire, Paiement
-import datetime
 
 class ProprietaireForm(forms.ModelForm):
     class Meta:
@@ -33,30 +32,14 @@ class LocataireForm(forms.ModelForm):
             }),
             "loyer_mensuel": forms.NumberInput(attrs={
                 "class": "form-control",
-                "placeholder": "Loyer mensuel"
+                "placeholder": "Loyer mensuel",
+                "step": "0.01"
             }),
             "proprietaire": forms.Select(attrs={
                 "class": "form-select"
             }),
         }
 
-
-
-
-MOIS_CHOICES = [
-    ("1", "Janvier"),
-    ("2", "Février"),
-    ("3", "Mars"),
-    ("4", "Avril"),
-    ("5", "Mai"),
-    ("6", "Juin"),
-    ("7", "Juillet"),
-    ("8", "Août"),
-    ("9", "Septembre"),
-    ("10", "Octobre"),
-    ("11", "Novembre"),
-    ("12", "Décembre"),
-]
 
 class PaiementForm(forms.ModelForm):
     proprietaire = forms.ModelChoiceField(
@@ -72,7 +55,7 @@ class PaiementForm(forms.ModelForm):
         widget=forms.Select(attrs={"class": "form-select", "id": "id_locataire"})
     )
     mois_concerne = forms.ChoiceField(
-        choices=Paiement.MOIS_CHOICES,
+        choices=Paiement.MOIS_CHOICES,  # ✅ utilise uniquement les choices du modèle
         label="Mois concerné",
         widget=forms.Select(attrs={"class": "form-select", "id": "id_mois_concerne"})
     )
@@ -81,8 +64,8 @@ class PaiementForm(forms.ModelForm):
         model = Paiement
         fields = ["proprietaire", "locataire", "date_paiement", "mois_concerne", "montant", "paye_en_avance"]
         widgets = {
-            "date_paiement": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "montant": forms.NumberInput(attrs={"class": "form-control", "id": "id_montant"}),
+            "date_paiement": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date", "class": "form-control"}),
+            "montant": forms.NumberInput(attrs={"class": "form-control", "id": "id_montant", "step": "0.01"}),
             "paye_en_avance": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_paye_en_avance"}),
         }
 

@@ -21,22 +21,27 @@
       </tr>
     </thead>
     <tbody>
-  {% for paiement in paiements %}
-  <tr>
-    <td>{{ paiement.proprietaire.nom }}</td>
-    <td>{{ paiement.locataire.nom }}</td>
-    <td>{{ paiement.montant }} FCFA</td>
-    <td>{{ paiement.date_paiement|date:"d/m/Y" }}</td>
-    <td>{{ paiement.get_mois_concerne_display }}</td>
-    <td>{% if paiement.paye_en_avance %}✅ Oui{% else %}❌ Non{% endif %}</td>
-  </tr>
-  {% empty %}
-  <tr>
-    <td colspan="6" class="text-center">Aucun paiement enregistré</td>
-  </tr>
-  {% endfor %}
-</tbody>
-
+      {% for paiement in paiements %}
+      <tr>
+        <td>{{ paiement.proprietaire.nom }}</td>
+        <td>{{ paiement.locataire.nom }}</td>
+        <td>{{ paiement.montant|floatformat:2 }} FCFA</td>
+        <td>{{ paiement.date_paiement|date:"d/m/Y" }}</td>
+        <td>
+          {% if MOIS_FR %}
+            {{ MOIS_FR.paiement.mois_concerne }}
+          {% else %}
+            {{ paiement.mois_concerne }}
+          {% endif %}
+        </td>
+        <td>{% if paiement.paye_en_avance %}✅ Oui{% else %}❌ Non{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center">Aucun paiement enregistré</td>
+      </tr>
+      {% endfor %}
+    </tbody>
   </table>
 
 </body>

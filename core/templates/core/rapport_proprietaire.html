@@ -8,24 +8,23 @@
 <body class="container mt-4">
 
     <!-- Formulaire de sélection du mois -->
-<form method="get" action="{% url 'rapport_proprietaire' proprietaire.id %}" class="mb-4">
-    <label for="mois" class="form-label">Choisir le mois :</label>
-    <select name="mois" id="mois" class="form-select w-auto d-inline">
-        {% for num, nom in mois_list %}
-            <option value="{{ num }}" {% if mois_rapport == nom %}selected{% endif %}>{{ nom }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-outline-primary ms-2">🔍 Filtrer</button>
-</form>
+    <form method="get" action="{% url 'rapport_proprietaire' proprietaire.id %}" class="mb-4">
+        <label for="mois" class="form-label">Choisir le mois :</label>
+        <select name="mois" id="mois" class="form-select w-auto d-inline">
+            {% for num, nom in mois_list %}
+                <option value="{{ num }}" {% if mois == num|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-primary ms-2">🔍 Filtrer</button>
+    </form>
 
-<!-- Bouton PDF -->
-<form method="get" action="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="mb-4">
-    {% if mois %}
-        <input type="hidden" name="mois" value="{{ mois }}">
-    {% endif %}
-    <button type="submit" class="btn btn-outline-danger">📄 Télécharger en PDF</button>
-</form>
-
+    <!-- Bouton PDF -->
+    <form method="get" action="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="mb-4">
+        {% if mois %}
+            <input type="hidden" name="mois" value="{{ mois }}">
+        {% endif %}
+        <button type="submit" class="btn btn-outline-danger">📄 Télécharger en PDF</button>
+    </form>
 
     <!-- Titre principal -->
     <h2 class="text-center mb-4">📊 Rapport mensuel NIVAL IMPACT</h2>
@@ -35,9 +34,9 @@
 
     <!-- Informations générales -->
     <h4>Propriétaire : {{ proprietaire.nom }}</h4>
-    <p><strong>Montant total des loyers :</strong> {{ total_loyers }} FCFA</p>
-    <p><strong>Montant total payé :</strong> {{ total_paye }} FCFA</p>
-    <p><strong>Commission agence (10%) :</strong> {{ commission }} FCFA</p>
+    <p><strong>Montant total des loyers :</strong> {{ total_loyers|floatformat:2 }} FCFA</p>
+    <p><strong>Montant total payé :</strong> {{ total_paye|floatformat:2 }} FCFA</p>
+    <p><strong>Commission agence (10%) :</strong> {{ commission|floatformat:2 }} FCFA</p>
 
     <!-- Tableau des locataires -->
     <h5 class="mt-4">Liste des locataires</h5>
@@ -53,7 +52,7 @@
             {% for locataire in locataires_data %}
             <tr>
                 <td>{{ locataire.nom }}</td>
-                <td>{{ locataire.loyer }} FCFA</td>
+                <td>{{ locataire.loyer|floatformat:2 }} FCFA</td>
                 <td>
                     {% if locataire.statut == "Payé" %}
                         <span class="badge bg-success">Payé</span>
@@ -61,6 +60,10 @@
                         <span class="badge bg-danger">Non payé</span>
                     {% endif %}
                 </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="text-center">Aucun locataire trouvé</td>
             </tr>
             {% endfor %}
         </tbody>

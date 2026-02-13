@@ -2,25 +2,22 @@ import os
 from pathlib import Path
 import dj_database_url
 
-
-
-# Render deployment fix
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Clé secrète (toujours via variable d'environnement en prod)
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-default")
 
-
-
 # DEBUG : False en production
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-# Hôtes autorisés (inclure ton domaine Render)
-ALLOWED_HOSTS = [
-    "locative-app.onrender.com",
-    "localhost",
-    "127.0.0.1",
+# Hôtes autorisés (Render + local)
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+# Sécurité Render
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{host}" for host in ALLOWED_HOSTS if host not in ["localhost", "127.0.0.1"]
 ]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Applications installées
 INSTALLED_APPS = [
@@ -65,14 +62,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "locative_app.wsgi.application"
 
-# Base de données (SQLite par défaut, Render peut utiliser Postgres via DATABASE_URL)
-DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-        ssl_require=False,
-    )
-}
+# Base de données : SQLite en local, Postgres sur Render
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if DATABASE_URL:
+    # ✅ Render/Postgres
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+else:
+    # ✅ Local/SQLite
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Validation des mots de passe
 AUTH_PASSWORD_VALIDATORS = [
@@ -96,7 +105,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # Whitenoise : compression et cache
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Fichiers médias (si tu en utilises)
+# Fichiers médias
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 

@@ -16,10 +16,12 @@ def dashboard(request):
 
 
 # Liste des mois en français
-MOIS_FR = [
-    "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-]
+MOIS_FR = {
+    1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
+    5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août",
+    9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
+}
+
 
 # -------------------------
 # FACTURE PDF PAR PROPRIÉTAIRE
@@ -35,8 +37,10 @@ def facture_proprietaire(request, proprietaire_id):
 
     mois_facture = ""
     if paiements.exists():
-        mois_num = paiements.first().mois_concerne
-        mois_facture = MOIS_FR.get(mois_num, "")
+         mois_num = paiements.first().mois_concerne
+         mois_facture = MOIS_FR.get(mois_num, "")
+
+
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="facture_{proprietaire.nom}.pdf"'
@@ -204,8 +208,8 @@ def dashboard_pdf(request):
 
     # Déterminer le mois en français
     mois_facture = ""
-    if mois:
-        mois_facture = MOIS_FR[int(mois)]
+    if mois and mois.isdigit():
+         mois_facture = MOIS_FR.get(int(mois), "")
 
     # Réponse PDF
     response = HttpResponse(content_type='application/pdf')
@@ -306,9 +310,8 @@ def accueil(request):
 
 
 @cache_page(60 * 5)  # cache 5 minutes
+@cache_page(60 * 5)  # cache 5 minutes
 def rapport_proprietaire(request, proprietaire_id):
-    ...
-
     proprietaire = get_object_or_404(Proprietaire.objects.prefetch_related("locataires"), id=proprietaire_id)
     locataires = proprietaire.locataires.all()   # relation inverse correcte
     paiements = Paiement.objects.filter(locataire__proprietaire=proprietaire).select_related("locataire")
@@ -316,13 +319,12 @@ def rapport_proprietaire(request, proprietaire_id):
     mois = request.GET.get("mois")
     mois_rapport = ""
     if mois and mois.isdigit():
-         mois_int = int(mois)
-         paiements = paiements.filter(mois_concerne=mois_int)
-         mois_rapport = MOIS_FR.get(mois_int, "")
+        mois_int = int(mois)
+        paiements = paiements.filter(mois_concerne=mois_int)
+        mois_rapport = MOIS_FR.get(mois_int, "")
 
-
-    total_loyers = sum([l.loyer_mensuel for l in locataires])
-    total_paye = sum([p.montant for p in paiements])
+    total_loyers = sum([l.loyer_mensuel for l in locataires]) or 0
+    total_paye = sum([p.montant for p in paiements]) or 0
     commission = total_paye * Decimal("0.1")
 
     locataires_data = []
@@ -346,6 +348,7 @@ def rapport_proprietaire(request, proprietaire_id):
         "mois": mois,
     }
     return render(request, "core/rapport_proprietaire.html", context)
+
 
 def ajouter_proprietaire(request):
     if request.method == "POST":
