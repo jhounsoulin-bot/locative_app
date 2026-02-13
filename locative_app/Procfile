@@ -1,2 +1,2 @@
-web: gunicorn locative_app.wsgi:application --log-file -
 release: python manage.py collectstatic --noinput
+web: gunicorn locative_app.wsgi:application --workers 3 --log-file - 
