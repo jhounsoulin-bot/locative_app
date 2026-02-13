@@ -101,7 +101,7 @@ USE_TZ = True
 # Fichiers statiques
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+ #STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # Whitenoise : compression et cache
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
