@@ -309,7 +309,7 @@ def accueil(request):
 
 
 
-@cache_page(60 * 5)  # cache 5 minutes
+
 @cache_page(60 * 5)  # cache 5 minutes
 def rapport_proprietaire(request, proprietaire_id):
     proprietaire = get_object_or_404(Proprietaire.objects.prefetch_related("locataires"), id=proprietaire_id)
