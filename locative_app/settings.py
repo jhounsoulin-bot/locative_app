@@ -11,7 +11,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-default")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # Hôtes autorisés (Render + local)
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,locative-app.onrender.com").split(",")
+
 
 # Sécurité Render
 CSRF_TRUSTED_ORIGINS = [
