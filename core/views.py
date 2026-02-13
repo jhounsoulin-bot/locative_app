@@ -35,8 +35,8 @@ def facture_proprietaire(request, proprietaire_id):
 
     mois_facture = ""
     if paiements.exists():
-        mois_num = paiements.first().mois_concerne.month
-        mois_facture = MOIS_FR[mois_num]
+        mois_num = paiements.first().mois_concerne
+        mois_facture = MOIS_FR.get(mois_num, "")
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="facture_{proprietaire.nom}.pdf"'
@@ -127,8 +127,9 @@ def dashboard(request):
         locataires_qs = Locataire.objects.all()
         paiements = Paiement.objects.all()
 
-    if mois:
-        paiements = paiements.filter(mois_concerne__month=int(mois))
+    if mois and mois.isdigit():
+         paiements = paiements.filter(mois_concerne=int(mois))
+
 
     proprietaires_count = Proprietaire.objects.count()
     locataires_count = locataires_qs.count()
@@ -188,8 +189,9 @@ def dashboard_pdf(request):
         paiements = Paiement.objects.all()
 
     # Filtrer par mois si sélectionné
-    if mois:
-        paiements = paiements.filter(mois_concerne__month=int(mois))
+    if mois and mois.isdigit():
+         paiements = paiements.filter(mois_concerne=int(mois))
+
 
     # Calculs principaux
     total_loyers_locataires = sum([l.loyer_mensuel for l in locataires_qs])
@@ -259,8 +261,9 @@ def accueil(request):
     locataires = Locataire.objects.all()
     paiements = Paiement.objects.all()
 
-    if mois:
-        paiements = paiements.filter(mois_concerne__month=int(mois))
+    if mois and mois.isdigit():
+         paiements = paiements.filter(mois_concerne=int(mois))
+
 
     total_loyers = sum([l.loyer_mensuel for l in locataires])
     total_recu = sum([p.montant for p in paiements])
@@ -312,10 +315,11 @@ def rapport_proprietaire(request, proprietaire_id):
 
     mois = request.GET.get("mois")
     mois_rapport = ""
-    if mois:
-        mois_int = int(mois)
-        paiements = paiements.filter(mois_concerne__month=mois_int)
-        mois_rapport = MOIS_FR[mois_int]
+    if mois and mois.isdigit():
+         mois_int = int(mois)
+         paiements = paiements.filter(mois_concerne=mois_int)
+         mois_rapport = MOIS_FR.get(mois_int, "")
+
 
     total_loyers = sum([l.loyer_mensuel for l in locataires])
     total_paye = sum([p.montant for p in paiements])
@@ -483,12 +487,6 @@ def get_locataires(request, proprietaire_id):
     return JsonResponse({"locataires": data})
 
 
-
-MOIS_FR = { 1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril", 
-           5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août", 
-           9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre" 
-        }
-
 def rapport_global(request):
     mois = request.GET.get("mois")
     proprietaires = Proprietaire.objects.prefetch_related("locataires")
@@ -499,8 +497,9 @@ def rapport_global(request):
         paiements = Paiement.objects.filter(locataire__in=locataires)
 
         # ✅ Filtrer par mois si sélectionné
-        if mois:
-            paiements = paiements.filter(mois_concerne__month=int(mois))
+        if mois and mois.isdigit():
+            paiements = paiements.filter(mois_concerne=int(mois))
+
 
         total_loyers = sum([l.loyer_mensuel for l in locataires])
         total_paye = sum([p.montant for p in paiements])
@@ -534,8 +533,9 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     locataires = proprietaire.locataires.all()
     paiements = Paiement.objects.filter(locataire__in=locataires)
 
-    if mois:
+    if mois and mois.isdigit():
         paiements = paiements.filter(mois_concerne=int(mois))
+
 
     # Totaux
     total_loyers = sum([l.loyer_mensuel for l in locataires])
