@@ -17,7 +17,7 @@ def copy_month(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0015_alter_paiement_mois_concerne"),  # ta dernière migration
+        ("core", "0014_alter_paiement_mois_concerne"),
     ]
 
     operations = [
@@ -41,3 +41,4 @@ class Migration(migrations.Migration):
             new_name="mois_concerne",
         ),
     ]
+
