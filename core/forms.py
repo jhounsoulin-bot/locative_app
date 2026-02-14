@@ -42,12 +42,14 @@ class LocataireForm(forms.ModelForm):
 
 
 class PaiementForm(forms.ModelForm):
-    proprietaire = forms.ModelChoiceField(
-        queryset=Proprietaire.objects.all(),
-        required=True,
-        label="Propriétaire",
-        widget=forms.Select(attrs={"class": "form-select", "id": "id_proprietaire"})
-    )
+    # ❌ SUPPRIMEZ ces lignes
+    # proprietaire = forms.ModelChoiceField(
+    #     queryset=Proprietaire.objects.all(),
+    #     required=True,
+    #     label="Propriétaire",
+    #     widget=forms.Select(attrs={"class": "form-select", "id": "id_proprietaire"})
+    # )
+    
     locataire = forms.ModelChoiceField(
         queryset=Locataire.objects.none(),
         required=True,
@@ -55,14 +57,14 @@ class PaiementForm(forms.ModelForm):
         widget=forms.Select(attrs={"class": "form-select", "id": "id_locataire"})
     )
     mois_concerne = forms.ChoiceField(
-        choices=Paiement.MOIS_CHOICES,  # ✅ utilise uniquement les choices du modèle
+        choices=Paiement.MOIS_CHOICES,
         label="Mois concerné",
         widget=forms.Select(attrs={"class": "form-select", "id": "id_mois_concerne"})
     )
 
     class Meta:
         model = Paiement
-        fields = ["proprietaire", "locataire", "date_paiement", "mois_concerne", "montant", "paye_en_avance"]
+        fields = ["locataire", "date_paiement", "mois_concerne", "montant", "paye_en_avance"]  # ✅ Enlevez "proprietaire"
         widgets = {
             "date_paiement": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date", "class": "form-control"}),
             "montant": forms.NumberInput(attrs={"class": "form-control", "id": "id_montant", "step": "0.01"}),
@@ -72,7 +74,8 @@ class PaiementForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         proprietaire_id = kwargs.pop("proprietaire_id", None)
         super().__init__(*args, **kwargs)
+        
+        self.fields["locataire"].queryset = Locataire.objects.none()
+        
         if proprietaire_id:
             self.fields["locataire"].queryset = Locataire.objects.filter(proprietaire_id=proprietaire_id)
-        else:
-            self.fields["locataire"].queryset = Locataire.objects.all()

@@ -7,8 +7,8 @@ from decimal import Decimal
 from .models import Proprietaire, Locataire, Paiement
 from .forms import ProprietaireForm, LocataireForm, PaiementForm
 from django.views.decorators.cache import cache_page
-
-
+from django.db import IntegrityError
+from datetime import datetime
 
 
 def dashboard(request):
@@ -317,11 +317,22 @@ def rapport_proprietaire(request, proprietaire_id):
     paiements = Paiement.objects.filter(locataire__proprietaire=proprietaire).select_related("locataire")
 
     mois = request.GET.get("mois")
+    annee = request.GET.get("annee")  # ✅ Récupérer l'année
     mois_rapport = ""
+
     if mois and mois.isdigit():
         mois_int = int(mois)
         paiements = paiements.filter(mois_concerne=mois_int)
-        mois_rapport = MOIS_FR.get(mois_int, "")
+        
+        # ✅ Si une année est spécifiée, filtrer aussi par année
+        if annee and annee.isdigit():
+            paiements = paiements.filter(annee=int(annee))
+            mois_rapport = f"{MOIS_FR.get(mois_int, '')} {annee}"
+        else:
+            # Sinon, utiliser l'année courante
+            annee_courante = datetime.now().year
+            paiements = paiements.filter(annee=annee_courante)
+            mois_rapport = f"{MOIS_FR.get(mois_int, '')} {annee_courante}"
 
     total_loyers = sum([l.loyer_mensuel for l in locataires]) or 0
     total_paye = sum([p.montant for p in paiements]) or 0
@@ -346,9 +357,9 @@ def rapport_proprietaire(request, proprietaire_id):
         "mois_list": [(i, MOIS_FR[i]) for i in range(1, 13)],
         "mois_rapport": mois_rapport,
         "mois": mois,
+        "annee": annee,
     }
     return render(request, "core/rapport_proprietaire.html", context)
-
 
 def ajouter_proprietaire(request):
     if request.method == "POST":
@@ -374,27 +385,54 @@ def ajouter_locataire(request):
 
 
 
-def ajouter_paiement(request):
-    proprietaire_id = request.GET.get("proprietaire")
 
+
+
+
+def ajouter_paiement(request):
     if request.method == "POST":
-        form = PaiementForm(request.POST, proprietaire_id=proprietaire_id)
-        if form.is_valid():
-            paiement = form.save()
+        try:
+            proprietaire_id = request.POST.get("proprietaire")
+            locataire_id = request.POST.get("locataire")
+            date_paiement_str = request.POST.get("date_paiement")
+            mois_concerne = request.POST.get("mois_concerne")
+            montant = request.POST.get("montant")
+            paye_en_avance = request.POST.get("paye_en_avance") == "on"
+            
+            # ✅ Convertir la date string en objet date
+            date_paiement = datetime.strptime(date_paiement_str, "%Y-%m-%d").date()
+            
+            # ✅ Créer le paiement
+            paiement = Paiement(
+                proprietaire_id=proprietaire_id,
+                locataire_id=locataire_id,
+                date_paiement=date_paiement,
+                mois_concerne=mois_concerne,
+                montant=montant,
+                paye_en_avance=paye_en_avance
+            )
+            paiement.save()
+            
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse({"success": True, "id": paiement.id})
             return redirect("accueil")
-        else:
+            
+        except IntegrityError:
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return JsonResponse({"success": False, "errors": form.errors}, status=400)
+                return JsonResponse({
+                    "success": False, 
+                    "errors": {"__all__": ["⚠️ Ce locataire a déjà payé pour ce mois de cette année !"]}
+                }, status=400)
+        except Exception as e:
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({
+                    "success": False, 
+                    "errors": {"__all__": [f"Erreur: {str(e)}"]}
+                }, status=400)
     else:
-        form = PaiementForm(proprietaire_id=proprietaire_id)
+        form = PaiementForm()
 
     return render(request, "core/ajouter_paiement.html", {"form": form})
-
-
-
-
 
 
 def paiement_create(request, proprietaire_id):
@@ -492,6 +530,7 @@ def get_locataires(request, proprietaire_id):
 
 def rapport_global(request):
     mois = request.GET.get("mois")
+    annee = request.GET.get("annee")  # ✅ Récupérer l'année
     proprietaires = Proprietaire.objects.prefetch_related("locataires")
     data = []
 
@@ -499,10 +538,15 @@ def rapport_global(request):
         locataires = proprietaire.locataires.all()
         paiements = Paiement.objects.filter(locataire__in=locataires)
 
-        # ✅ Filtrer par mois si sélectionné
+        # ✅ Filtrer par mois ET année si sélectionnés
         if mois and mois.isdigit():
             paiements = paiements.filter(mois_concerne=int(mois))
-
+            
+            if annee and annee.isdigit():
+                paiements = paiements.filter(annee=int(annee))
+            else:
+                annee_courante = datetime.now().year
+                paiements = paiements.filter(annee=annee_courante)
 
         total_loyers = sum([l.loyer_mensuel for l in locataires])
         total_paye = sum([p.montant for p in paiements])
@@ -526,9 +570,9 @@ def rapport_global(request):
         "rapport": data,
         "mois_list": [(i, MOIS_FR[i]) for i in range(1, 13)],
         "mois": mois,
+        "annee": annee,  # ✅ Ajouter l'année au contexte
     }
     return render(request, "core/rapport_global.html", context)
-
 
 def rapport_proprietaire_pdf(request, proprietaire_id):
     mois = request.GET.get("mois")
@@ -538,7 +582,6 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
 
     if mois and mois.isdigit():
         paiements = paiements.filter(mois_concerne=int(mois))
-
 
     # Totaux
     total_loyers = sum([l.loyer_mensuel for l in locataires])
@@ -555,12 +598,18 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     p.setFont("Helvetica-Bold", 16)
     p.drawCentredString(width/2, height-50, "RAPPORT MENSUEL NIVAL IMPACT")
 
-    # ✅ Mois du rapport juste en dessous
+    # ✅ Mois du rapport avec année
     p.setFont("Helvetica", 12)
     if mois:
         try:
             mois_num = int(mois)
-            p.drawCentredString(width/2, height-70, f"Mois du rapport : {MOIS_FR[mois_num]}")
+            annee = request.GET.get("annee")
+            if annee and annee.isdigit():
+                mois_texte = f"{MOIS_FR[mois_num]} {annee}"
+            else:
+                from datetime import datetime
+                mois_texte = f"{MOIS_FR[mois_num]} {datetime.now().year}"
+            p.drawCentredString(width/2, height-70, f"Mois du rapport : {mois_texte}")
         except (ValueError, KeyError):
             p.drawCentredString(width/2, height-70, "Mois du rapport : Invalide")
     else:
@@ -615,11 +664,6 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
 
 
 
-
-
-
-
-
 def liste_paiements(request):
     paiements = Paiement.objects.select_related("locataire", "proprietaire").all().order_by("-date_paiement")
     return render(request, "core/liste_paiements.html", {"paiements": paiements})
@@ -628,6 +672,7 @@ def liste_paiements(request):
 
 def rapport_global_pdf(request):
     mois = request.GET.get("mois")
+    annee = request.GET.get("annee")
     proprietaires = Proprietaire.objects.prefetch_related("locataires")
 
     response = HttpResponse(content_type='application/pdf')
@@ -636,13 +681,17 @@ def rapport_global_pdf(request):
     p = canvas.Canvas(response, pagesize=landscape(A4))
     width, height = landscape(A4)
 
-    # ✅ Titre
+    # ✅ Titre avec mois et année
     p.setFont("Helvetica-Bold", 16)
     titre = "RAPPORT GLOBAL MENSUEL NIVAL IMPACT"
     if mois and mois.isdigit():
         try:
             mois_num = int(mois)
-            titre += f" - {MOIS_FR[mois_num]}"
+            if annee and annee.isdigit():
+                titre += f" - {MOIS_FR[mois_num]} {annee}"
+            else:
+                annee_courante = datetime.now().year
+                titre += f" - {MOIS_FR[mois_num]} {annee_courante}"
         except (ValueError, KeyError):
             titre += " - Mois invalide"
     else:
@@ -664,6 +713,7 @@ def rapport_global_pdf(request):
         p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
         p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, header)
 
+    # ✅ CORRECTION : Déplacer y vers le bas APRÈS avoir dessiné l'en-tête
     y -= row_height
 
     # Totaux globaux
@@ -679,6 +729,12 @@ def rapport_global_pdf(request):
 
         if mois and mois.isdigit():
             paiements = paiements.filter(mois_concerne=int(mois))
+            
+            if annee and annee.isdigit():
+                paiements = paiements.filter(annee=int(annee))
+            else:
+                annee_courante = datetime.now().year
+                paiements = paiements.filter(annee=annee_courante)
 
         total_loyers = sum([l.loyer_mensuel for l in locataires])
         total_paye = sum([p.montant for p in paiements])
@@ -691,8 +747,31 @@ def rapport_global_pdf(request):
         total_commission_global += commission
 
         locataires_non_payes = [l.nom for l in locataires if not paiements.filter(locataire=l).exists()]
-        locataires_lines = locataires_non_payes if locataires_non_payes else ["✅ Tous ont payé"]
-        cell_height = max(row_height, len(locataires_lines) * 12)
+        
+        # ✅ Découper les noms longs et calculer la hauteur nécessaire
+        if locataires_non_payes:
+            locataires_lines = []
+            current_line = ""
+            for nom in locataires_non_payes:
+                if current_line:
+                    test_line = current_line + ", " + nom
+                else:
+                    test_line = nom
+                
+                if len(test_line) > 30:
+                    if current_line:
+                        locataires_lines.append(current_line)
+                    current_line = nom
+                else:
+                    current_line = test_line
+            
+            if current_line:
+                locataires_lines.append(current_line)
+        else:
+            locataires_lines = ["✅ Tous ont payé"]
+        
+        # Calculer la hauteur de cellule en fonction du nombre de lignes
+        cell_height = max(row_height, len(locataires_lines) * 15 + 10)
 
         values = [
             proprietaire.nom,
@@ -702,23 +781,28 @@ def rapport_global_pdf(request):
             f"{commission:.2f}"
         ]
 
+        # Dessiner les cellules numériques
         for i, val in enumerate(values):
             p.rect(col_x[i], y, col_widths[i], cell_height, stroke=1, fill=0)
             if i == 0:
+                p.setFont("Helvetica", 10)
                 p.drawString(col_x[i] + 5, y + cell_height - 15, val)
             else:
+                p.setFont("Helvetica", 10)
                 p.drawCentredString(col_x[i] + col_widths[i]/2, y + cell_height - 15, val)
 
-        # Colonne locataires impayés
+        # Dessiner la colonne des locataires impayés avec texte multiligne
         p.rect(col_x[5], y, col_widths[5], cell_height, stroke=1, fill=0)
-        text_obj = p.beginText(col_x[5] + 5, y + cell_height - 15)
-        text_obj.setFont("Helvetica", 9)
+        p.setFont("Helvetica", 8)
+        
+        text_y = y + cell_height - 12
         for line in locataires_lines:
-            text_obj.textLine(line)
-        p.drawText(text_obj)
+            p.drawString(col_x[5] + 5, text_y, line)
+            text_y -= 12
 
         y -= cell_height
 
+        # Vérifier si on doit créer une nouvelle page
         if y < 100:
             p.showPage()
             y = height - 100
@@ -726,8 +810,7 @@ def rapport_global_pdf(request):
             for i, header in enumerate(headers):
                 p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
                 p.drawCentredString(col_x[i] + col_widths[i]/2, y + 5, header)
-            y -= row_height
-            p.setFont("Helvetica", 10)
+            y -= row_height  # ✅ Ne pas oublier de déplacer y après l'en-tête sur nouvelle page
 
     # Totaux globaux
     p.setFont("Helvetica-Bold", 11)
@@ -749,12 +832,11 @@ def rapport_global_pdf(request):
     y -= 40
     p.setFont("Helvetica", 12)
     p.drawString(2 * cm, y, "Signature du gestionnaire")
-    p.drawString(width - 7 * cm, y, "Signature du propriétaire")
+    p.drawString(width - 7 * cm, y, "Signature du PDG NIVAL IMPACT")
 
     p.showPage()
     p.save()
     return response
-
 
 
 
