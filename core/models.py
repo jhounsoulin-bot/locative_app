@@ -65,24 +65,24 @@ class Paiement(models.Model):
         null=True,
         blank=True
     )
-    annee = models.IntegerField(verbose_name="Année", null=True, blank=True)  # ✅ null=True pour éviter erreurs
+    annee = models.IntegerField(verbose_name="Année", null=True, blank=True)
     montant = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Montant")
     paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
     
-    # ✅ AJOUTEZ CETTE MÉTHODE
     def save(self, *args, **kwargs):
         # Remplir automatiquement l'année depuis date_paiement
         if self.date_paiement and not self.annee:
             self.annee = self.date_paiement.year
         super().save(*args, **kwargs)
     
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=['locataire', 'mois_concerne', 'annee'],
-                name='unique_paiement_locataire_mois_annee',
-            )
-        ]
+    # ❌ COMMENTEZ TEMPORAIREMENT LA CONTRAINTE
+    # class Meta:
+    #     constraints = [
+    #         models.UniqueConstraint(
+    #             fields=['locataire', 'mois_concerne', 'annee'],
+    #             name='unique_paiement_locataire_mois_annee',
+    #         )
+    #     ]
 
     def __str__(self):
         mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "Mois inconnu")
