@@ -3,6 +3,29 @@
 from django.db import migrations, models
 
 
+def clean_duplicates(apps, schema_editor):
+    """Nettoie les doublons avant d'ajouter la contrainte"""
+    Paiement = apps.get_model('core', 'Paiement')
+    
+    # Trouver et supprimer les doublons, garder le premier (ID le plus petit)
+    seen = set()
+    to_delete = []
+    
+    for p in Paiement.objects.all().order_by('id'):
+        key = (p.locataire_id, p.mois_concerne, p.annee)
+        if key in seen:
+            to_delete.append(p.id)
+            print(f"Doublon trouvé : ID {p.id} - Locataire {p.locataire_id}, Mois {p.mois_concerne}, Année {p.annee}")
+        else:
+            seen.add(key)
+    
+    if to_delete:
+        count = Paiement.objects.filter(id__in=to_delete).delete()[0]
+        print(f"✅ {count} doublons supprimés")
+    else:
+        print("✅ Aucun doublon trouvé")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,8 +33,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # 1️⃣ D'abord nettoyer les doublons
+        migrations.RunPython(clean_duplicates, reverse_code=migrations.RunPython.noop),
+        
+        # 2️⃣ Ensuite ajouter la contrainte
         migrations.AddConstraint(
             model_name='paiement',
-            constraint=models.UniqueConstraint(fields=('locataire', 'mois_concerne', 'annee'), name='unique_paiement_locataire_mois_annee'),
+            constraint=models.UniqueConstraint(
+                fields=('locataire', 'mois_concerne', 'annee'), 
+                name='unique_paiement_locataire_mois_annee'
+            ),
         ),
     ]
