@@ -5,4 +5,4 @@ dj-database-url
 whitenoise
 reportlab
 Pillow
-python-decouple
+python-decouple 
