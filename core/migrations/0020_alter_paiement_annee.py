@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0019_paiement_annee_and_more'),
+        ('core', '0018_alter_paiement_montant_alter_paiement_proprietaire'),
     ]
 
     operations = [
