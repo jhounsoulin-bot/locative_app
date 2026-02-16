@@ -75,15 +75,14 @@ class Paiement(models.Model):
             self.annee = self.date_paiement.year
         super().save(*args, **kwargs)
     
-    # ❌ COMMENTEZ TEMPORAIREMENT LA CONTRAINTE
-    # class Meta:
-    #     constraints = [
-    #         models.UniqueConstraint(
-    #             fields=['locataire', 'mois_concerne', 'annee'],
-    #             name='unique_paiement_locataire_mois_annee',
-    #         )
-    #     ]
+    class Meta:  # ✅ Même indentation que def save
+        constraints = [
+            models.UniqueConstraint(
+                fields=['locataire', 'mois_concerne', 'annee'],
+                name='unique_paiement_locataire_mois_annee',
+            )
+        ]
 
-    def __str__(self):
+    def __str__(self):  # ✅ Même indentation que class Meta
         mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "Mois inconnu")
         return f"{self.locataire.nom} - {self.montant} FCFA ({mois_label} {self.annee or self.date_paiement.year})"
