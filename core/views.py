@@ -261,22 +261,21 @@ def dashboard_pdf(request):
 def accueil(request):
     mois = request.GET.get("mois")
 
-    proprietaires = Proprietaire.objects.all()
-    locataires = Locataire.objects.all()
+    proprietaires = Proprietaire.objects.all().order_by('nom')  # ✅ Tri alphabétique
+    locataires = Locataire.objects.all().order_by('nom')  # ✅ Tri alphabétique
     paiements = Paiement.objects.all()
 
     if mois and mois.isdigit():
          paiements = paiements.filter(mois_concerne=int(mois))
 
-
     total_loyers = sum([l.loyer_mensuel for l in locataires])
     total_recu = sum([p.montant for p in paiements])
     commission = total_recu * Decimal('0.1')
 
-    # ✅ Liste des locataires qui n'ont pas payé
+    # Liste des locataires qui n'ont pas payé
     locataires_non_payes = []
     for proprietaire in proprietaires:
-        for locataire in proprietaire.locataires.all():   # <-- CORRECT
+        for locataire in proprietaire.locataires.all():
             paiement_existe = paiements.filter(locataire=locataire).exists()
             if not paiement_existe:
                 locataires_non_payes.append({
@@ -284,7 +283,6 @@ def accueil(request):
                     "locataire": locataire,
                 })
 
-    # ✅ dictionnaire {locataire_id: loyer}
     loyers_dict = {str(locataire.id): float(locataire.loyer_mensuel) for locataire in locataires}
 
     context = {
@@ -306,7 +304,6 @@ def accueil(request):
     }
 
     return render(request, "core/accueil.html", context)
-
 
 
 
@@ -380,13 +377,6 @@ def ajouter_locataire(request):
     else:
         form = LocataireForm()
     return render(request, "core/ajouter_locataire.html", {"form": form})
-
-
-
-
-
-
-
 
 
 def ajouter_paiement(request):
@@ -523,10 +513,9 @@ def get_locataires_by_proprietaire_nom(request, proprietaire_nom):
 
 
 def get_locataires(request, proprietaire_id):
-    locataires = Locataire.objects.filter(proprietaire_id=proprietaire_id)
+    locataires = Locataire.objects.filter(proprietaire_id=proprietaire_id).order_by('nom')  # ✅ Tri alphabétique
     data = [{"id": l.id, "nom": l.nom} for l in locataires]
     return JsonResponse({"locataires": data})
-
 
 def rapport_global(request):
     mois = request.GET.get("mois")

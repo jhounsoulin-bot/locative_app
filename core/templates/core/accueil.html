@@ -77,16 +77,16 @@
         <form id="paiementForm" method="post">
           {% csrf_token %}
 
-          <!-- Propriétaire - SELECT SANS BOOTSTRAP -->
-          <div class="mb-3">
-            <label for="select_proprietaire">Propriétaire</label>
-            <select name="proprietaire" id="select_proprietaire" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-              <option value="">--- Sélectionnez un propriétaire ---</option>
-              {% for proprietaire in proprietaires %}
-                <option value="{{ proprietaire.id }}">{{ proprietaire.nom }}</option>
-              {% endfor %}
-            </select>
-          </div>
+          <!-- Propriétaire - Trié alphabétiquement -->
+<div class="mb-3">
+  <label for="select_proprietaire">Propriétaire</label>
+  <select name="proprietaire" id="select_proprietaire" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <option value="">--- Sélectionnez un propriétaire ---</option>
+    {% for proprietaire in proprietaires %}
+      <option value="{{ proprietaire.id }}">{{ proprietaire.nom }}</option>
+    {% endfor %}
+  </select>
+</div>
 
           <!-- Locataire -->
           <div class="mb-3">
@@ -108,25 +108,25 @@
             <input type="date" name="date_paiement" id="input_date" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
           </div>
 
-          <!-- Mois concerné -->
-          <div class="mb-3">
-            <label for="select_mois">Mois concerné</label>
-            <select name="mois_concerne" id="select_mois" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-              <option value="">---</option>
-              <option value="1">Janvier</option>
-              <option value="2">Février</option>
-              <option value="3">Mars</option>
-              <option value="4">Avril</option>
-              <option value="5">Mai</option>
-              <option value="6">Juin</option>
-              <option value="7">Juillet</option>
-              <option value="8">Août</option>
-              <option value="9">Septembre</option>
-              <option value="10">Octobre</option>
-              <option value="11">Novembre</option>
-              <option value="12">Décembre</option>
-            </select>
-          </div>
+          <!-- Formulaire de sélection du mois -->
+<form method="get" action="{% url 'rapport_proprietaire' proprietaire.id %}" class="mb-4">
+    <label for="mois" class="form-label">Choisir le mois :</label>
+    <select name="mois" id="mois" class="form-select w-auto d-inline">
+        {% for num, nom in mois_list %}
+            <option value="{{ num }}" {% if mois == num|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
+        {% endfor %}
+    </select>
+    
+    <!-- ✅ AJOUTEZ CE BLOC POUR L'ANNÉE -->
+    <label for="annee" class="form-label ms-3">Année :</label>
+    <select name="annee" id="annee" class="form-select w-auto d-inline">
+        <option value="2024" {% if annee == "2024" %}selected{% endif %}>2024</option>
+        <option value="2025" {% if annee == "2025" %}selected{% endif %}>2025</option>
+        <option value="2026" {% if annee == "2026" %}selected{% endif %}>2026</option>
+    </select>
+    
+    <button type="submit" class="btn btn-outline-primary ms-2">🔍 Filtrer</button>
+</form>
 
           <!-- Payé en avance -->
           <div class="mb-3">
@@ -378,8 +378,15 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(({status, data}) => {
             if (status === 200 && data.success) {
                 alert("✅ Paiement enregistré avec succès !");
-                bootstrap.Modal.getInstance(document.getElementById("modalPaiement")).hide();
-                location.reload();
+                
+                // ✅ NE PAS FERMER LE MODAL - Commentez ces deux lignes
+                // bootstrap.Modal.getInstance(document.getElementById("modalPaiement")).hide();
+                // location.reload();
+                
+                // ✅ Réinitialiser le formulaire pour un nouvel enregistrement
+                form.reset();
+                locSelect.innerHTML = '<option value="">--- Choisissez d\'abord un propriétaire ---</option>';
+                montantInput.value = "";
             } else {
                 alert(data.errors?.__all__?.[0] || "❌ Erreur lors de l'enregistrement");
             }
