@@ -43,15 +43,19 @@
     <!-- Titre principal -->
     <h2 class="text-center mb-4">📊 Rapport mensuel NIVAL IMPACT</h2>
     {% if mois_rapport %}
-        <h5 class="text-center text-primary">Mois du rapport : {{ mois_rapport }}</h5>
+    <h5 class="text-center text-primary">
+        Mois du rapport : {{ mois_rapport }}
+        {% if annee %} - {{ annee }}{% endif %}  <!-- ✅ Afficher l'année -->
+    </h5>
     {% endif %}
 
     <!-- Informations générales -->
     <h4>Propriétaire : {{ proprietaire.nom }}</h4>
     <p><strong>Montant total des loyers :</strong> {{ total_loyers|floatformat:2 }} FCFA</p>
     <p><strong>Montant total payé :</strong> {{ total_paye|floatformat:2 }} FCFA</p>
+    <p><strong>Montant total reçu par le propriétaire :</strong> {{ total_recu_proprietaire|floatformat:2 }} FCFA</p>
     <p><strong>Commission agence (10%) :</strong> {{ commission|floatformat:2 }} FCFA</p>
-
+    
     <!-- Tableau des locataires -->
     <h5 class="mt-4">Liste des locataires</h5>
     <table class="table table-striped table-bordered">

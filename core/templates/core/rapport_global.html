@@ -19,7 +19,6 @@
       {% endfor %}
     </select>
     
-    <!-- ✅ Ajout du sélecteur d'année -->
     <label for="annee" class="ms-3">Année :</label>
     <select name="annee" id="annee" class="form-select w-auto d-inline-block">
       <option value="">Année courante</option>
@@ -40,6 +39,7 @@
         <th>Total payé</th>
         <th>Non payé</th>
         <th>Commission</th>
+        <th>Total reçu</th>
         <th>Locataires non payés</th>
       </tr>
     </thead>
@@ -51,6 +51,7 @@
         <td>{{ item.total_paye|floatformat:2 }} FCFA</td>
         <td>{{ item.non_paye|floatformat:2 }} FCFA</td>
         <td>{{ item.commission|floatformat:2 }} FCFA</td>
+        <td>{{ item.total_recu|floatformat:2 }} FCFA</td> <!-- ✅ CORRIGÉ -->
         <td>
           {% if item.locataires_non_payes %}
             {{ item.locataires_non_payes|join:", " }}
@@ -61,13 +62,12 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="6" class="text-center">Aucun rapport disponible</td>
+        <td colspan="7" class="text-center">Aucun rapport disponible</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <!-- ✅ Bouton PDF avec mois ET année -->
   <a href="{% url 'rapport_global_pdf' %}?{% if mois %}mois={{ mois }}{% endif %}{% if annee %}&annee={{ annee }}{% endif %}" class="btn btn-danger mt-3">📄 Télécharger en PDF</a>
 
 </body>

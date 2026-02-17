@@ -1,48 +1,78 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Liste des paiements</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <title>Liste des paiements - NIVAL IMPACT</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
-<body class="container mt-4 bg-light">
+<body class="container mt-4">
 
-  <h2>💰 Liste des paiements</h2>
+    <h2 class="mb-4">💰 Liste des paiements</h2>
+    
+    <a href="{% url 'accueil' %}" class="btn btn-secondary mb-3">← Retour à l'accueil</a>
 
-  <table class="table table-striped table-bordered mt-3">
-    <thead class="table-dark">
-      <tr>
-        <th>Propriétaire</th>
-        <th>Locataire</th>
-        <th>Montant</th>
-        <th>Date de paiement</th>
-        <th>Mois concerné</th>
-        <th>Payé en avance</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for paiement in paiements %}
-      <tr>
-        <td>{{ paiement.proprietaire.nom }}</td>
-        <td>{{ paiement.locataire.nom }}</td>
-        <td>{{ paiement.montant|floatformat:2 }} FCFA</td>
-        <td>{{ paiement.date_paiement|date:"d/m/Y" }}</td>
-        <td>
-          {% if MOIS_FR %}
-            {{ MOIS_FR.paiement.mois_concerne }}
-          {% else %}
-            {{ paiement.mois_concerne }}
-          {% endif %}
-        </td>
-        <td>{% if paiement.paye_en_avance %}✅ Oui{% else %}❌ Non{% endif %}</td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" class="text-center">Aucun paiement enregistré</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Date</th>
+                <th>Propriétaire</th>
+                <th>Locataire</th>
+                <th>Mois</th>
+                <th>Année</th>
+                <th>Montant</th>
+                <th>Actions</th> <!-- ✅ Nouvelle colonne -->
+            </tr>
+        </thead>
+        <tbody>
+            {% for paiement in paiements %}
+            <tr>
+                <td>{{ paiement.date_paiement }}</td>
+                <td>{{ paiement.proprietaire.nom }}</td>
+                <td>{{ paiement.locataire.nom }}</td>
+                <td>{{ paiement.get_mois_concerne_display }}</td>
+                <td>{{ paiement.annee }}</td>
+                <td>{{ paiement.montant }} FCFA</td>
+                <td>
+                    <!-- ✅ Bouton supprimer -->
+                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalSupprimerPaiement{{ paiement.id }}">
+                        🗑️ Supprimer
+                    </button>
+                </td>
+            </tr>
 
+            <!-- ✅ Modal de confirmation de suppression -->
+            <div class="modal fade" id="modalSupprimerPaiement{{ paiement.id }}" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">🗑️ Supprimer le paiement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <p>Voulez-vous vraiment supprimer ce paiement ?</p>
+                    <p><strong>Locataire :</strong> {{ paiement.locataire.nom }}</p>
+                    <p><strong>Mois :</strong> {{ paiement.get_mois_concerne_display }} {{ paiement.annee }}</p>
+                    <p><strong>Montant :</strong> {{ paiement.montant }} FCFA</p>
+                  </div>
+                  <div class="modal-footer">
+                    <form method="post" action="{% url 'supprimer_paiement' paiement.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger">🗑️ Confirmer la suppression</button>
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">Aucun paiement enregistré</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

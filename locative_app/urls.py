@@ -23,4 +23,5 @@ urlpatterns = [
     path("rapport-global-pdf/", views.rapport_global_pdf, name="rapport_global_pdf"),
     path("get-locataires/<int:proprietaire_id>/", views.get_locataires, name="get_locataires"),
     path("get-loyer/<int:locataire_id>/", views.get_loyer, name="get_loyer"),
+    path('supprimer-paiement/<int:pk>/', views.supprimer_paiement, name='supprimer_paiement'),
 ]
