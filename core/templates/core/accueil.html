@@ -341,14 +341,14 @@ document.addEventListener("DOMContentLoaded", function() {
     const locSelect = document.getElementById("select_locataire");
     const montantInput = document.getElementById("input_montant");
     
-    // Charger locataires quand propriétaire change
-    propSelect.onchange = function() {
-        if (!this.value) {
+    // Fonction pour charger les locataires
+    function chargerLocataires(proprietaireId) {
+        if (!proprietaireId) {
             locSelect.innerHTML = '<option value="">--- Choisissez d\'abord un propriétaire ---</option>';
             return;
         }
         
-        fetch(`/get-locataires/${this.value}/`)
+        fetch(`/get-locataires/${proprietaireId}/`)
           .then(r => r.json())
           .then(data => {
               locSelect.innerHTML = '<option value="">--- Sélectionnez un locataire ---</option>';
@@ -356,6 +356,11 @@ document.addEventListener("DOMContentLoaded", function() {
                   locSelect.innerHTML += `<option value="${loc.id}">${loc.nom}</option>`;
               });
           });
+    }
+    
+    // Charger locataires quand propriétaire change
+    propSelect.onchange = function() {
+        chargerLocataires(this.value);
     };
     
     // Charger loyer quand locataire change
@@ -379,11 +384,12 @@ document.addEventListener("DOMContentLoaded", function() {
             if (status === 200 && data.success) {
                 alert("✅ Paiement enregistré avec succès !");
                 
-                // ✅ Réinitialiser UNIQUEMENT le locataire et le montant
-                locSelect.innerHTML = '<option value="">--- Sélectionnez un locataire ---</option>';
-                montantInput.value = "";
+                // ✅ Recharger les locataires du propriétaire actuellement sélectionné
+                const proprietaireId = propSelect.value;
+                chargerLocataires(proprietaireId);
                 
-                // ✅ Le propriétaire, la date, le mois et la checkbox restent inchangés
+                // ✅ Réinitialiser le montant
+                montantInput.value = "";
             } else {
                 alert(data.errors?.__all__?.[0] || "❌ Erreur lors de l'enregistrement");
             }
