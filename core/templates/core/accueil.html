@@ -325,7 +325,7 @@
             <input type="number" step="0.01" class="form-control" 
        id="loyer_loc_{{ locataire.id }}" 
        name="loyer_mensuel" 
-       value="{{ locataire.loyer_mensuel|stringformat:'.2f' }}" 
+       value="{{ locataire.loyer_mensuel|floatformat:2 }}" 
        required>
           </div>
           
