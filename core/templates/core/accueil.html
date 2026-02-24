@@ -322,7 +322,11 @@
           
           <div class="mb-3">
             <label for="loyer_loc_{{ locataire.id }}" class="form-label">Loyer mensuel</label>
-            <input type="number" step="0.01" class="form-control" id="loyer_loc_{{ locataire.id }}" name="loyer_mensuel" value="{{ locataire.loyer_mensuel }}" required>
+            <input type="number" step="0.01" class="form-control" 
+       id="loyer_loc_{{ locataire.id }}" 
+       name="loyer_mensuel" 
+       value="{{ locataire.loyer_mensuel|stringformat:'.2f' }}" 
+       required>
           </div>
           
           <div class="mb-3">
