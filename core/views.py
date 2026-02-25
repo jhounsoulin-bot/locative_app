@@ -750,8 +750,25 @@ def rapport_global_pdf(request):
     p = canvas.Canvas(response, pagesize=landscape(A4))
     width, height = landscape(A4)
 
-    # Titre
-    p.setFont("Helvetica-Bold", 14)
+    # ── Fonction utilitaire : coupe un texte long en plusieurs lignes ──
+    def wrap_text(text, max_chars):
+        """Découpe un texte en lignes de max_chars caractères max."""
+        words = text.split()
+        lines = []
+        current = ""
+        for word in words:
+            if len(current) + len(word) + 1 <= max_chars:
+                current = (current + " " + word).strip()
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        return lines if lines else [text[:max_chars]]
+
+    # ── Titre ──
+    p.setFont("Helvetica-Bold", 13)
     titre = "RAPPORT GLOBAL MENSUEL NIVAL IMPACT"
     if mois and mois.isdigit():
         try:
@@ -760,33 +777,54 @@ def rapport_global_pdf(request):
             pass
     if annee:
         titre += f" - {annee}"
-    p.drawCentredString(width / 2, height - 40, titre)
+    p.drawCentredString(width / 2, height - 35, titre)
 
-    # Colonnes
-    col_x =      [1*cm,  5*cm,  9*cm,  13*cm, 17*cm, 21*cm, 25*cm]
-    col_widths = [4*cm,  4*cm,  4*cm,   4*cm,  4*cm,  4*cm,  6*cm]
-    row_height = 18
-    header_y = height - 70
+    # ── Définition des colonnes (total = ~28cm sur A4 paysage ~29.7cm) ──
+    # Propriétaire plus large, colonnes numériques compactes
+    col_x      = [0.5*cm, 5.5*cm, 10*cm,  14*cm,  18*cm,  22*cm,  26*cm]
+    col_widths = [5*cm,   4.5*cm,  4*cm,   4*cm,   4*cm,   4*cm,   3.5*cm]
+    # max_chars par colonne pour le wrapping
+    max_chars  = [16,     12,      12,     12,     12,     12,     14]
 
-    # En-têtes
-    p.setFont("Helvetica-Bold", 9)
-    headers = ["Propriétaire", "Total loyers", "Total payé", "Non payé", "Commission", "Total reçu", "Locataires non payés"]
+    LINE_H = 12     # hauteur d'une ligne de texte
+    PADDING = 6     # padding vertical dans la cellule
+    header_h = 20
+    header_y = height - 65
+
+    # ── En-têtes ──
+    headers = ["Propriétaire", "Total loyers", "Total payé", "Non payé", "Commission", "Total reçu", "Non payés"]
+    p.setFont("Helvetica-Bold", 8)
     for i, header in enumerate(headers):
-        p.rect(col_x[i], header_y, col_widths[i], row_height, stroke=1, fill=1)
+        p.setFillColorRGB(0.15, 0.15, 0.35)
+        p.rect(col_x[i], header_y, col_widths[i], header_h, stroke=0, fill=1)
         p.setFillColorRGB(1, 1, 1)
-        p.drawCentredString(col_x[i] + col_widths[i] / 2, header_y + 5, header)
+        p.drawCentredString(col_x[i] + col_widths[i] / 2, header_y + 6, header)
+    p.setFillColorRGB(0, 0, 0)
+
+    y = header_y  # y = bas de la ligne d'en-tête, on descend ensuite
+
+    # ── Totaux globaux ──
+    total_loyers_global    = Decimal('0')
+    total_paye_global      = Decimal('0')
+    total_non_paye_global  = Decimal('0')
+    total_commission_global= Decimal('0')
+    total_recu_global      = Decimal('0')
+
+    def draw_headers_new_page():
+        p.showPage()
+        p.setFont("Helvetica-Bold", 13)
+        p.drawCentredString(width / 2, height - 35, titre + " (suite)")
+        p.setFont("Helvetica-Bold", 8)
+        hy = height - 65
+        for i, header in enumerate(headers):
+            p.setFillColorRGB(0.15, 0.15, 0.35)
+            p.rect(col_x[i], hy, col_widths[i], header_h, stroke=0, fill=1)
+            p.setFillColorRGB(1, 1, 1)
+            p.drawCentredString(col_x[i] + col_widths[i] / 2, hy + 6, header)
         p.setFillColorRGB(0, 0, 0)
+        return hy  # retourne le bas des en-têtes
 
-    y = header_y - row_height
-
-    # Totaux globaux
-    total_loyers_global = Decimal('0')
-    total_paye_global = Decimal('0')
-    total_non_paye_global = Decimal('0')
-    total_commission_global = Decimal('0')
-    total_recu_global = Decimal('0')
-
-    for proprietaire in proprietaires:
+    for idx, proprietaire in enumerate(proprietaires):
         locataires = proprietaire.locataires.all()
         paiements = Paiement.objects.filter(locataire__in=locataires)
 
@@ -796,91 +834,111 @@ def rapport_global_pdf(request):
             paiements = paiements.filter(annee=int(annee))
 
         total_loyers = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
-        total_paye = sum([p.montant for p in paiements]) or Decimal('0')
-        non_paye = total_loyers - total_paye
-        commission = total_paye * Decimal("0.1")
-        total_recu = total_paye - commission
+        total_paye   = sum([pm.montant for pm in paiements])       or Decimal('0')
+        non_paye     = total_loyers - total_paye
+        commission   = total_paye * Decimal("0.1")
+        total_recu   = total_paye - commission
 
-        total_loyers_global += total_loyers
-        total_paye_global += total_paye
-        total_non_paye_global += non_paye
+        total_loyers_global     += total_loyers
+        total_paye_global       += total_paye
+        total_non_paye_global   += non_paye
         total_commission_global += commission
-        total_recu_global += total_recu
+        total_recu_global       += total_recu
 
         locataires_non_payes = [l.nom for l in locataires if not paiements.filter(locataire=l).exists()]
 
-        # Calcul hauteur de la cellule selon nombre de locataires non payés
-        nb_lignes = max(1, len(locataires_non_payes))
-        cell_height = max(row_height, nb_lignes * 14 + 6)
+        # Calculer les lignes wrappées pour chaque colonne
+        values_raw = [
+            proprietaire.nom,
+            f"{total_loyers:.0f} F",
+            f"{total_paye:.0f} F",
+            f"{non_paye:.0f} F",
+            f"{commission:.0f} F",
+            f"{total_recu:.0f} F",
+        ]
+        wrapped_values = [wrap_text(v, max_chars[i]) for i, v in enumerate(values_raw)]
+
+        # Colonne non payés : une ligne par locataire
+        if locataires_non_payes:
+            non_payes_lines = [wrap_text(nom, max_chars[6]) for nom in locataires_non_payes]
+            non_payes_flat = [line for sublist in non_payes_lines for line in sublist]
+        else:
+            non_payes_flat = ["Tous ont paye"]
+
+        # Hauteur de la cellule = max lignes de toutes les colonnes
+        max_lines = max(
+            max(len(w) for w in wrapped_values),
+            len(non_payes_flat)
+        )
+        cell_h = max_lines * LINE_H + PADDING * 2
 
         # Nouvelle page si nécessaire
-        if y - cell_height < 60:
-            # Ligne de totaux partiels si on coupe
-            p.showPage()
-            p.setFont("Helvetica-Bold", 14)
-            p.drawCentredString(width / 2, height - 40, titre + " (suite)")
-            p.setFont("Helvetica-Bold", 9)
-            for i, header in enumerate(headers):
-                p.rect(col_x[i], height - 70, col_widths[i], row_height, stroke=1, fill=1)
-                p.setFillColorRGB(1, 1, 1)
-                p.drawCentredString(col_x[i] + col_widths[i] / 2, height - 70 + 5, header)
-                p.setFillColorRGB(0, 0, 0)
-            y = height - 70 - row_height
+        if y - cell_h < 55:
+            y = draw_headers_new_page()
 
-        # Valeurs des colonnes 0-5
-        values = [
-            proprietaire.nom,
-            f"{total_loyers:.0f} FCFA",
-            f"{total_paye:.0f} FCFA",
-            f"{non_paye:.0f} FCFA",
-            f"{commission:.0f} FCFA",
-            f"{total_recu:.0f} FCFA",
-        ]
+        cell_top = y - cell_h
 
-        p.setFont("Helvetica", 9)
-        for i, val in enumerate(values):
-            p.rect(col_x[i], y - cell_height + row_height, col_widths[i], cell_height, stroke=1, fill=0)
-            # Centrer verticalement
-            p.drawString(col_x[i] + 4, y - cell_height + row_height + cell_height / 2 - 4, val)
-
-        # Colonne locataires non payés — une ligne par locataire
-        p.rect(col_x[6], y - cell_height + row_height, col_widths[6], cell_height, stroke=1, fill=0)
-        if locataires_non_payes:
-            text_y = y - cell_height + row_height + cell_height - 12
-            p.setFont("Helvetica", 8)
-            for nom in locataires_non_payes:
-                p.drawString(col_x[6] + 4, text_y, f"• {nom}")
-                text_y -= 13
+        # Fond alterné
+        if idx % 2 == 0:
+            p.setFillColorRGB(0.95, 0.95, 1.0)
         else:
-            p.setFont("Helvetica", 9)
-            p.drawString(col_x[6] + 4, y - cell_height + row_height + cell_height / 2 - 4, "✓ Tous ont payé")
+            p.setFillColorRGB(1, 1, 1)
 
-        y -= cell_height
+        # Dessiner les cellules colonnes 0-5
+        p.setFont("Helvetica", 8)
+        for i, lines in enumerate(wrapped_values):
+            p.rect(col_x[i], cell_top, col_widths[i], cell_h, stroke=1, fill=1)
+            p.setFillColorRGB(0, 0, 0)
+            text_y = y - PADDING - LINE_H
+            for line in lines:
+                p.drawString(col_x[i] + 3, text_y, line)
+                text_y -= LINE_H
+            # Reset fill pour prochain rect
+            if idx % 2 == 0:
+                p.setFillColorRGB(0.95, 0.95, 1.0)
+            else:
+                p.setFillColorRGB(1, 1, 1)
 
-    # Ligne totaux globaux
-    if y - row_height < 60:
-        p.showPage()
-        y = height - 60
+        # Colonne non payés
+        p.rect(col_x[6], cell_top, col_widths[6], cell_h, stroke=1, fill=1)
+        p.setFillColorRGB(0, 0, 0)
+        text_y = y - PADDING - LINE_H
+        p.setFont("Helvetica", 7)
+        for line in non_payes_flat:
+            p.drawString(col_x[6] + 3, text_y, line)
+            text_y -= LINE_H
 
-    p.setFont("Helvetica-Bold", 9)
+        y = cell_top
+
+    # ── Ligne totaux ──
+    if y - 20 < 55:
+        y = draw_headers_new_page()
+
+    p.setFillColorRGB(0.9, 0.95, 0.9)
+    p.setFont("Helvetica-Bold", 8)
     totals = [
-        "TOTAL",
-        f"{total_loyers_global:.0f} FCFA",
-        f"{total_paye_global:.0f} FCFA",
-        f"{total_non_paye_global:.0f} FCFA",
-        f"{total_commission_global:.0f} FCFA",
-        f"{total_recu_global:.0f} FCFA",
+        "TOTAL GLOBAL",
+        f"{total_loyers_global:.0f} F",
+        f"{total_paye_global:.0f} F",
+        f"{total_non_paye_global:.0f} F",
+        f"{total_commission_global:.0f} F",
+        f"{total_recu_global:.0f} F",
         ""
     ]
+    total_h = 18
     for i, val in enumerate(totals):
-        p.rect(col_x[i], y - row_height + row_height, col_widths[i], row_height, stroke=1, fill=0)
-        p.drawCentredString(col_x[i] + col_widths[i] / 2, y + 5, val)
+        p.rect(col_x[i], y - total_h, col_widths[i], total_h, stroke=1, fill=1)
+        p.setFillColorRGB(0, 0, 0)
+        p.drawCentredString(col_x[i] + col_widths[i] / 2, y - total_h + 5, val)
 
-    y -= row_height
+    y -= total_h
 
-    # Signatures
-    y -= 40
-    p.setFont("Helvetica", 11)
+    # ── Signatures ──
+    y -= 35
+    if y < 30:
+        p.showPage()
+        y = height - 60
+    p.setFont("Helvetica", 10)
     p.drawString(2 * cm, y, "Signature du gestionnaire")
     p.drawString(width - 7 * cm, y, "Signature du propriétaire")
 
