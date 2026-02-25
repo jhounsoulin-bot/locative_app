@@ -345,19 +345,22 @@ def dashboard_pdf(request):
 @admin_required
 def accueil(request):
     mois = request.GET.get("mois")
+    annee = request.GET.get("annee")  # ← ajout
 
-    proprietaires = Proprietaire.objects.all().order_by('nom')  # ✅ Tri alphabétique
-    locataires = Locataire.objects.all().order_by('nom')  # ✅ Tri alphabétique
+    proprietaires = Proprietaire.objects.all().order_by('nom')
+    locataires = Locataire.objects.all().order_by('nom')
     paiements = Paiement.objects.all()
 
     if mois and mois.isdigit():
-         paiements = paiements.filter(mois_concerne=int(mois))
+        paiements = paiements.filter(mois_concerne=int(mois))
+
+    if annee and annee.isdigit():  # ← ajout
+        paiements = paiements.filter(annee=int(annee))
 
     total_loyers = sum([l.loyer_mensuel for l in locataires])
     total_recu = sum([p.montant for p in paiements])
     commission = total_recu * Decimal('0.1')
 
-    # Liste des locataires qui n'ont pas payé
     locataires_non_payes = []
     for proprietaire in proprietaires:
         for locataire in proprietaire.locataires.all():
@@ -379,7 +382,9 @@ def accueil(request):
         "total_recu": total_recu,
         "commission": commission,
         "mois": mois,
+        "annee": annee,  # ← ajout
         "mois_list": range(1, 13),
+        "annee_list": [2024, 2025, 2026],  # ← ajout
         "locataires_non_payes": locataires_non_payes,
         "non_payes_count": len(locataires_non_payes),
         "proprietaire_form": ProprietaireForm(),
@@ -389,7 +394,6 @@ def accueil(request):
     }
 
     return render(request, "core/accueil.html", context)
-
 
 
 @cache_page(60 * 5)  # cache 5 minutes
@@ -914,8 +918,6 @@ def rapport_global_pdf(request):
     if y - 20 < 55:
         y = draw_headers_new_page()
 
-    p.setFillColorRGB(0.9, 0.95, 0.9)
-    p.setFont("Helvetica-Bold", 8)
     totals = [
         "TOTAL GLOBAL",
         f"{total_loyers_global:.0f} F",
@@ -926,8 +928,12 @@ def rapport_global_pdf(request):
         ""
     ]
     total_h = 18
+    p.setFont("Helvetica-Bold", 8)
     for i, val in enumerate(totals):
+        # Fond vert clair
+        p.setFillColorRGB(0.8, 0.95, 0.8)
         p.rect(col_x[i], y - total_h, col_widths[i], total_h, stroke=1, fill=1)
+        # Texte noir
         p.setFillColorRGB(0, 0, 0)
         p.drawCentredString(col_x[i] + col_widths[i] / 2, y - total_h + 5, val)
 
@@ -940,7 +946,7 @@ def rapport_global_pdf(request):
         y = height - 60
     p.setFont("Helvetica", 10)
     p.drawString(2 * cm, y, "Signature du gestionnaire")
-    p.drawString(width - 7 * cm, y, "Signature du propriétaire")
+    p.drawString(width - 7 * cm, y, "Signature du PDG NIVAL IMPACT")
 
     p.showPage()
     p.save()

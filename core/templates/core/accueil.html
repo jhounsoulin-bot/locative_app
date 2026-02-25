@@ -222,38 +222,40 @@
         </div></div>
     </div>
 
-    <!-- STATISTIQUES -->
-    <div class="row mb-4">
-        <div class="col-md-2"><strong>Propriétaires :</strong> {{ proprietaires_count }}</div>
-        <div class="col-md-2"><strong>Locataires :</strong> {{ locataires_count }}</div>
-        <div class="col-md-3"><strong>Loyers totaux :</strong> {{ total_loyers }} FCFA</div>
-        <div class="col-md-3"><strong>Loyers reçus :</strong> {{ total_recu }} FCFA</div>
-        <div class="col-md-2"><strong>Commission :</strong> {{ commission }} FCFA</div>
-    </div>
-
-    <button class="btn btn-danger mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#nonPayesList">
-        📌 Locataires non payés ({{ non_payes_count }})
-    </button>
-
-    <div class="mb-4">
-        <a href="{% url 'liste_paiements' %}" class="btn btn-info me-2">💰 Voir les paiements</a>
-        <a href="{% url 'rapport_global' %}" class="btn btn-primary me-2">📊 Rapport global</a>
-        <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger">📄 Télécharger rapport global en PDF</a>
-    </div>
-
-    <div class="collapse" id="nonPayesList">
-        <h5>Locataires qui n'ont pas payé {% if mois %}pour le mois {{ mois }}{% endif %}</h5>
-        <ul class="list-group">
-            {% for item in locataires_non_payes %}
-            <li class="list-group-item">
-                <strong>Propriétaire :</strong> {{ item.proprietaire.nom }}
-                → <strong>Locataire :</strong> {{ item.locataire.nom }} (📞 {{ item.locataire.numero }})
-            </li>
-            {% empty %}
-            <li class="list-group-item">✅ Tous les locataires ont payé ce mois</li>
+   <!-- Filtre mois / année -->
+<form method="get" class="d-flex align-items-center gap-3 flex-wrap mb-3">
+    <div>
+        <label class="form-label mb-0 fw-semibold">Mois :</label>
+        <select name="mois" class="form-select form-select-sm w-auto d-inline-block">
+            <option value="">Tous</option>
+            {% for i in mois_list %}
+                <option value="{{ i }}" {% if mois == i|stringformat:"s" %}selected{% endif %}>
+                    Mois {{ i }}
+                </option>
             {% endfor %}
-        </ul>
+        </select>
     </div>
+    <div>
+        <label class="form-label mb-0 fw-semibold">Année :</label>
+        <select name="annee" class="form-select form-select-sm w-auto d-inline-block">
+            <option value="">Toutes</option>
+            {% for a in annee_list %}
+                <option value="{{ a }}" {% if annee == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">🔍 Filtrer</button>
+    <a href="{% url 'accueil' %}" class="btn btn-outline-secondary btn-sm">✖ Réinitialiser</a>
+</form>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+    <div class="col-md-2"><strong>Propriétaires :</strong> {{ proprietaires_count }}</div>
+    <div class="col-md-2"><strong>Locataires :</strong> {{ locataires_count }}</div>
+    <div class="col-md-3"><strong>Loyers totaux :</strong> {{ total_loyers }} FCFA</div>
+    <div class="col-md-3"><strong>Loyers reçus :</strong> {{ total_recu }} FCFA</div>
+    <div class="col-md-2"><strong>Commission :</strong> {{ commission }} FCFA</div>
+</div>
 
     <!-- CARTES PROPRIÉTAIRES -->
     <div class="row mt-4">
