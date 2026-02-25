@@ -24,4 +24,7 @@ urlpatterns = [
     path("get-locataires/<int:proprietaire_id>/", views.get_locataires, name="get_locataires"),
     path("get-loyer/<int:locataire_id>/", views.get_loyer, name="get_loyer"),
     path('supprimer-paiement/<int:pk>/', views.supprimer_paiement, name='supprimer_paiement'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('parametres/', views.parametres_view, name='parametres'),
 ]

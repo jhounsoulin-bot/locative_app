@@ -9,6 +9,91 @@ from .forms import ProprietaireForm, LocataireForm, PaiementForm
 from django.views.decorators.cache import cache_page
 from django.db import IntegrityError
 from datetime import datetime
+from django.contrib import messages
+from .models import AdminCompte  # adapte selon ton app
+from functools import wraps
+
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.session.get('admin_connecte'):
+            return redirect('login')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+def login_view(request):
+    if request.session.get('admin_connecte'):
+        return redirect('accueil')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        try:
+            compte = AdminCompte.objects.get(username=username)
+            if compte.check_password(password):
+                request.session['admin_connecte'] = True
+                request.session['admin_username'] = compte.username
+                request.session['admin_id'] = compte.id
+                return redirect('accueil')
+            else:
+                messages.error(request, "Mot de passe incorrect.")
+        except AdminCompte.DoesNotExist:
+            messages.error(request, "Identifiant introuvable.")
+
+    return render(request, 'core/login.html')
+
+
+def logout_view(request):
+    request.session.flush()
+    return redirect('login')
+
+
+def parametres_view(request):
+    if not request.session.get('admin_connecte'):
+        return redirect('login')
+
+    compte = AdminCompte.objects.get(id=request.session['admin_id'])
+    success = False
+    error = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'changer_username':
+            new_username = request.POST.get('new_username', '').strip()
+            if not new_username:
+                error = "Le nom d'utilisateur ne peut pas être vide."
+            elif AdminCompte.objects.filter(username=new_username).exclude(id=compte.id).exists():
+                error = "Ce nom d'utilisateur est déjà pris."
+            else:
+                compte.username = new_username
+                compte.save()
+                request.session['admin_username'] = new_username
+                success = True
+
+        elif action == 'changer_password':
+            ancien = request.POST.get('ancien_password', '')
+            nouveau = request.POST.get('nouveau_password', '')
+            confirmation = request.POST.get('confirmation_password', '')
+
+            if not compte.check_password(ancien):
+                error = "Ancien mot de passe incorrect."
+            elif len(nouveau) < 6:
+                error = "Le nouveau mot de passe doit avoir au moins 6 caractères."
+            elif nouveau != confirmation:
+                error = "Les mots de passe ne correspondent pas."
+            else:
+                compte.set_password(nouveau)
+                compte.save()
+                success = True
+
+    return render(request, 'core/parametres.html', {
+        'compte': compte,
+        'success': success,
+        'error': error,
+    })
 
 
 def dashboard(request):
@@ -257,7 +342,7 @@ def dashboard_pdf(request):
     return response
 
 
-
+@admin_required
 def accueil(request):
     mois = request.GET.get("mois")
 
