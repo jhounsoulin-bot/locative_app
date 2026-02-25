@@ -9,153 +9,220 @@
 </head>
 <body class="container mt-4 bg-light">
 
-    <!-- Titre principal -->
-    <h1 class="mb-4">🏠 Gestion Locative NIVAL IMPACT</h1>
+    <!-- Titre + Déconnexion -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>🏠 Gestion Locative NIVAL IMPACT</h1>
+        <div>
+            <a href="{% url 'parametres' %}" class="btn btn-outline-secondary me-2">⚙️ Paramètres</a>
+            <form method="post" action="{% url 'logout' %}" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger">🚪 Déconnexion</button>
+            </form>
+        </div>
+    </div>
 
-         
     <!-- Boutons d'ajout -->
     <div class="mb-4">
-    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalProprietaire">➕ Ajouter un propriétaire</button>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLocataire">➕ Ajouter un locataire</button>
-    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalPaiement">💰 Enregistrer un paiement</button>
-    <a href="{% url 'parametres' %}" class="btn btn-outline-secondary">⚙️ Paramètres</a>
-  
-    <form method="post" action="{% url 'logout' %}" style="display:inline">
-      {% csrf_token %}
-    <button type="submit" class="btn btn-outline-danger">🚪 Déconnexion</button>
-    </form>
-   
-  
-  
-  </div>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalProprietaire">➕ Ajouter un propriétaire</button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLocataire">➕ Ajouter un locataire</button>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalPaiement">💰 Enregistrer un paiement</button>
+    </div>
 
-     
-   
-
-    <!-- Modal Ajouter Propriétaire -->
+    <!-- MODAL AJOUTER PROPRIÉTAIRE -->
     <div class="modal fade" id="modalProprietaire" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header bg-success text-white">
-            <h5 class="modal-title">➕ Ajouter un propriétaire</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form method="post" action="{% url 'ajouter_proprietaire' %}">
-              {% csrf_token %}
-              {{ proprietaire_form.as_p }}
-              <div class="mt-3 text-end">
-                <button type="submit" class="btn btn-success">✅ Enregistrer</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">➕ Ajouter un propriétaire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'ajouter_proprietaire' %}">
+                    {% csrf_token %}
+                    {{ proprietaire_form.as_p }}
+                    <div class="mt-3 text-end"><button type="submit" class="btn btn-success">✅ Enregistrer</button></div>
+                </form>
+            </div>
+        </div></div>
     </div>
 
-    <!-- Modal Ajouter Locataire -->
+    <!-- MODAL AJOUTER LOCATAIRE -->
     <div class="modal fade" id="modalLocataire" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">➕ Ajouter un locataire</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form method="post" action="{% url 'ajouter_locataire' %}">
-              {% csrf_token %}
-              {{ locataire_form.as_p }}
-              <div class="mt-3 text-end">
-                <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">➕ Ajouter un locataire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'ajouter_locataire' %}">
+                    {% csrf_token %}
+                    {{ locataire_form.as_p }}
+                    <div class="mt-3 text-end"><button type="submit" class="btn btn-primary">✅ Enregistrer</button></div>
+                </form>
+            </div>
+        </div></div>
     </div>
 
-  <!-- Modal Ajouter Paiement -->
-<div class="modal fade" id="modalPaiement" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-warning">
-        <h5 class="modal-title">💰 Enregistrer un paiement</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form id="paiementForm" method="post">
-          {% csrf_token %}
-
-          <!-- Propriétaire - Trié alphabétiquement -->
-<div class="mb-3">
-  <label for="select_proprietaire">Propriétaire</label>
-  <select name="proprietaire" id="select_proprietaire" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-    <option value="">--- Sélectionnez un propriétaire ---</option>
-    {% for proprietaire in proprietaires %}
-      <option value="{{ proprietaire.id }}">{{ proprietaire.nom }}</option>
-    {% endfor %}
-  </select>
-</div>
-
-          <!-- Locataire -->
-          <div class="mb-3">
-            <label for="select_locataire">Locataire</label>
-            <select name="locataire" id="select_locataire" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-              <option value="">--- Choisissez d'abord un propriétaire ---</option>
-            </select>
-          </div>
-
-          <!-- Montant -->
-          <div class="mb-3">
-            <label for="input_montant">Montant</label>
-            <input type="number" name="montant" id="input_montant" step="0.01" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-          </div>
-
-          <!-- Date de paiement -->
-          <div class="mb-3">
-            <label for="input_date">Date de paiement</label>
-            <input type="date" name="date_paiement" id="input_date" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-          </div>
-
-          <!-- Mois concerné -->
-<div class="mb-3">
-  <label for="select_mois">Mois concerné</label>
-  <select name="mois_concerne" id="select_mois" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-    <option value="">---</option>
-    <option value="1">Janvier</option>
-    <option value="2">Février</option>
-    <option value="3">Mars</option>
-    <option value="4">Avril</option>
-    <option value="5">Mai</option>
-    <option value="6">Juin</option>
-    <option value="7">Juillet</option>
-    <option value="8">Août</option>
-    <option value="9">Septembre</option>
-    <option value="10">Octobre</option>
-    <option value="11">Novembre</option>
-    <option value="12">Décembre</option>
-  </select>
-</div>
-
-          <!-- Payé en avance -->
-          <div class="mb-3">
-            <label>
-              <input type="checkbox" name="paye_en_avance" id="input_avance"> Payé en avance
-            </label>
-          </div>
-
-          <div class="mt-3 text-end">
-            <button type="submit" class="btn btn-warning">✅ Enregistrer</button>
-          </div>
-        </form>
-      </div>
+    <!-- MODAL AJOUTER PAIEMENT -->
+    <div class="modal fade" id="modalPaiement" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">💰 Enregistrer un paiement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="paiementForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label>Propriétaire</label>
+                        <select name="proprietaire" id="select_proprietaire" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
+                            <option value="">--- Sélectionnez un propriétaire ---</option>
+                            {% for proprietaire in proprietaires %}
+                                <option value="{{ proprietaire.id }}">{{ proprietaire.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Locataire</label>
+                        <select name="locataire" id="select_locataire" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
+                            <option value="">--- Choisissez d'abord un propriétaire ---</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Montant</label>
+                        <input type="number" name="montant" id="input_montant" step="0.01" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
+                    </div>
+                    <div class="mb-3">
+                        <label>Date de paiement</label>
+                        <input type="date" name="date_paiement" id="input_date" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
+                    </div>
+                    <div class="mb-3">
+                        <label>Mois concerné</label>
+                        <select name="mois_concerne" id="select_mois" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
+                            <option value="">---</option>
+                            <option value="1">Janvier</option><option value="2">Février</option>
+                            <option value="3">Mars</option><option value="4">Avril</option>
+                            <option value="5">Mai</option><option value="6">Juin</option>
+                            <option value="7">Juillet</option><option value="8">Août</option>
+                            <option value="9">Septembre</option><option value="10">Octobre</option>
+                            <option value="11">Novembre</option><option value="12">Décembre</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label><input type="checkbox" name="paye_en_avance" id="input_avance"> Payé en avance</label>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="submit" class="btn btn-warning">✅ Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div></div>
     </div>
-  </div>
-</div>
 
+    <!-- MODAL MODIFIER PROPRIÉTAIRE (unique dynamique) -->
+    <div class="modal fade" id="modalModifierProprietaire" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="titreModifierProp">✏️ Modifier le propriétaire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="formModifierProprietaire" action="">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="edit_prop_nom" name="nom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Numéro</label>
+                        <input type="text" class="form-control" id="edit_prop_numero" name="numero" required>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div></div>
+    </div>
 
+    <!-- MODAL SUPPRIMER PROPRIÉTAIRE (unique dynamique) -->
+    <div class="modal fade" id="modalSupprimerProprietaire" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">🗑 Supprimer le propriétaire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="formSupprimerProprietaire" action="">
+                    {% csrf_token %}
+                    <p>Confirmer la suppression de <strong id="nomSupprimerProp"></strong> ?</p>
+                    <div class="mt-3 text-end">
+                        <button type="submit" class="btn btn-danger">🗑 Supprimer</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    </div>
+                </form>
+            </div>
+        </div></div>
+    </div>
 
-    <!-- Statistiques -->
+    <!-- MODAL MODIFIER LOCATAIRE (unique dynamique) -->
+    <div class="modal fade" id="modalModifierLocataire" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="titreModifierLoc">✏️ Modifier le locataire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="formModifierLocataire" action="">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="edit_loc_nom" name="nom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Numéro</label>
+                        <input type="text" class="form-control" id="edit_loc_numero" name="numero" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Loyer mensuel</label>
+                        <input type="number" step="0.01" class="form-control" id="edit_loc_loyer" name="loyer_mensuel" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Propriétaire</label>
+                        <select class="form-select" id="edit_loc_proprietaire" name="proprietaire" required>
+                            {% for prop in proprietaires %}
+                                <option value="{{ prop.id }}">{{ prop.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- MODAL SUPPRIMER LOCATAIRE (unique dynamique) -->
+    <div class="modal fade" id="modalSupprimerLocataire" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">🗑 Supprimer le locataire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="formSupprimerLocataire" action="">
+                    {% csrf_token %}
+                    <p>Confirmer la suppression de <strong id="nomSupprimerLoc"></strong> ?</p>
+                    <div class="mt-3 text-end">
+                        <button type="submit" class="btn btn-danger">🗑 Supprimer</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    </div>
+                </form>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- STATISTIQUES -->
     <div class="row mb-4">
         <div class="col-md-2"><strong>Propriétaires :</strong> {{ proprietaires_count }}</div>
         <div class="col-md-2"><strong>Locataires :</strong> {{ locataires_count }}</div>
@@ -163,305 +230,179 @@
         <div class="col-md-3"><strong>Loyers reçus :</strong> {{ total_recu }} FCFA</div>
         <div class="col-md-2"><strong>Commission :</strong> {{ commission }} FCFA</div>
     </div>
-       
-    <!-- Bouton pour afficher les non payés avec compteur -->
-<button class="btn btn-danger mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#nonPayesList">
-  📌 Locataires non payés ({{ non_payes_count }})
-</button>
 
+    <button class="btn btn-danger mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#nonPayesList">
+        📌 Locataires non payés ({{ non_payes_count }})
+    </button>
 
+    <div class="mb-4">
+        <a href="{% url 'liste_paiements' %}" class="btn btn-info me-2">💰 Voir les paiements</a>
+        <a href="{% url 'rapport_global' %}" class="btn btn-primary me-2">📊 Rapport global</a>
+        <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger">📄 Télécharger rapport global en PDF</a>
+    </div>
 
-<div class="mb-4">
-  <!-- Bouton voir paiements -->
-  <a href="{% url 'liste_paiements' %}" class="btn btn-info me-2">
-    💰 Voir les paiements
-  </a>
+    <div class="collapse" id="nonPayesList">
+        <h5>Locataires qui n'ont pas payé {% if mois %}pour le mois {{ mois }}{% endif %}</h5>
+        <ul class="list-group">
+            {% for item in locataires_non_payes %}
+            <li class="list-group-item">
+                <strong>Propriétaire :</strong> {{ item.proprietaire.nom }}
+                → <strong>Locataire :</strong> {{ item.locataire.nom }} (📞 {{ item.locataire.numero }})
+            </li>
+            {% empty %}
+            <li class="list-group-item">✅ Tous les locataires ont payé ce mois</li>
+            {% endfor %}
+        </ul>
+    </div>
 
-  <!-- Bouton rapport global -->
-  <a href="{% url 'rapport_global' %}" class="btn btn-primary me-2">
-    📊 Rapport global
-  </a>
+    <!-- CARTES PROPRIÉTAIRES -->
+    <div class="row mt-4">
+        {% for proprietaire in proprietaires %}
+        <div class="col-md-4 mb-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title">{{ proprietaire.nom }}</h5>
+                    <p class="card-text">📞 {{ proprietaire.numero }}</p>
 
-  <!-- Bouton rapport global PDF -->
-  <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger">
-    📄 Télécharger rapport global en PDF
-  </a>
-</div>
+                    <button class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal" data-bs-target="#modalModifierProprietaire"
+                        data-id="{{ proprietaire.id }}"
+                        data-nom="{{ proprietaire.nom }}"
+                        data-numero="{{ proprietaire.numero }}">✏️ Modifier</button>
 
+                    <button class="btn btn-sm btn-danger"
+                        data-bs-toggle="modal" data-bs-target="#modalSupprimerProprietaire"
+                        data-id="{{ proprietaire.id }}"
+                        data-nom="{{ proprietaire.nom }}">🗑 Supprimer</button>
 
-<!-- Liste des locataires non payés (cachée par défaut) -->
-<div class="collapse" id="nonPayesList">
-  <h5>Locataires qui n'ont pas payé {% if mois %}pour le mois {{ mois }}{% endif %}</h5>
-  <ul class="list-group">
-    {% for item in locataires_non_payes %}
-    <li class="list-group-item">
-      <strong>Propriétaire :</strong> {{ item.proprietaire.nom }}
-      → <strong>Locataire :</strong> {{ item.locataire.nom }} (📞 {{ item.locataire.numero }})
-    </li>
-    {% empty %}
-    <li class="list-group-item">✅ Tous les locataires ont payé ce mois</li>
-    {% endfor %}
-  </ul>
-</div>
+                    <button class="btn btn-outline-primary mt-2" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#locataires{{ proprietaire.id }}">
+                        Voir les locataires
+                    </button>
 
-   
+                    <a href="{% url 'rapport_proprietaire' proprietaire.id %}" class="btn btn-outline-warning mt-2">📊 Rapport mensuel</a>
+                    <a href="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="btn btn-outline-danger mt-3">📄 Télécharger en PDF</a>
 
-    
-    <!-- Cartes des propriétaires -->
-<div class="row">
-    {% for proprietaire in proprietaires %}
-    <div class="col-md-4 mb-3">
-        <div class="card shadow">
-            <div class="card-body">
-                <h5 class="card-title">{{ proprietaire.nom }}</h5>
-                <p class="card-text">📞 {{ proprietaire.numero }}</p>
-
-                <!-- Boutons d'action -->
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalModifierProprietaire{{ proprietaire.id }}">✏️ Modifier</button>
-                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalSupprimerProprietaire{{ proprietaire.id }}">🗑 Supprimer</button>
-
-                <button class="btn btn-outline-primary mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#locataires{{ proprietaire.id }}">
-                    Voir les locataires
-                </button>
-
-                <a href="{% url 'rapport_proprietaire' proprietaire.id %}" class="btn btn-outline-warning mt-2">
-                          📊 Rapport mensuel
-                 </a>
-
-                 <a href="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="btn btn-outline-danger mt-3">
-                      📄 Télécharger en PDF
-                </a>
-
-
-                <div class="collapse mt-2" id="locataires{{ proprietaire.id }}">
-                      <ul class="list-group">
-                         {% for locataire in proprietaire.locataires.all %}
-                        <li class="list-group-item">
-                    {{ locataire.nom }} - {{ locataire.numero }} - {{ locataire.loyer_mensuel }} FCFA
-                      <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalModifierLocataire{{ locataire.id }}">✏️</button>
-                   <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalSupprimerLocataire{{ locataire.id }}">🗑</button>
-                    </li>
-                   {% empty %}
-                      <li class="list-group-item">Aucun locataire</li>
-                     {% endfor %}
-                       </ul>
-                  </div>
-
+                    <div class="collapse mt-2" id="locataires{{ proprietaire.id }}">
+                        <ul class="list-group">
+                            {% for locataire in proprietaire.locataires.all %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>{{ locataire.nom }} - {{ locataire.numero }} - {{ locataire.loyer_mensuel }} FCFA</span>
+                                <span>
+                                    <button class="btn btn-sm btn-primary"
+                                        data-bs-toggle="modal" data-bs-target="#modalModifierLocataire"
+                                        data-id="{{ locataire.id }}"
+                                        data-nom="{{ locataire.nom }}"
+                                        data-numero="{{ locataire.numero }}"
+                                        data-loyer="{{ locataire.loyer_mensuel }}"
+                                        data-proprietaire="{{ locataire.proprietaire.id }}">✏️</button>
+                                    <button class="btn btn-sm btn-danger"
+                                        data-bs-toggle="modal" data-bs-target="#modalSupprimerLocataire"
+                                        data-id="{{ locataire.id }}"
+                                        data-nom="{{ locataire.nom }}">🗑</button>
+                                </span>
+                            </li>
+                            {% empty %}
+                            <li class="list-group-item">Aucun locataire</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
+        {% endfor %}
     </div>
 
-    <!-- Modal Modifier Propriétaire -->
-<div class="modal fade" id="modalModifierProprietaire{{ proprietaire.id }}" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">✏️ Modifier {{ proprietaire.nom }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form method="post" action="{% url 'modifier_proprietaire' proprietaire.id %}">
-          {% csrf_token %}
-          
-          <!-- ✅ Champs pré-remplis -->
-          <div class="mb-3">
-            <label for="nom_{{ proprietaire.id }}" class="form-label">Nom</label>
-            <input type="text" class="form-control" id="nom_{{ proprietaire.id }}" name="nom" value="{{ proprietaire.nom }}" required>
-          </div>
-          
-          <div class="mb-3">
-            <label for="numero_{{ proprietaire.id }}" class="form-label">Numéro</label>
-            <input type="text" class="form-control" id="numero_{{ proprietaire.id }}" name="numero" value="{{ proprietaire.numero }}" required>
-          </div>
-          
-          <div class="mt-3 text-end">
-            <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
 
-    <!-- Modal Supprimer Propriétaire -->
-    <div class="modal fade" id="modalSupprimerProprietaire{{ proprietaire.id }}" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header bg-danger text-white">
-            <h5 class="modal-title">🗑 Supprimer {{ proprietaire.nom }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form method="post" action="{% url 'supprimer_proprietaire' proprietaire.id %}">
-              {% csrf_token %}
-              <p>Confirmer la suppression de <strong>{{ proprietaire.nom }}</strong> ?</p>
-              <div class="mt-3 text-end">
-                <button type="submit" class="btn btn-danger">🗑 Supprimer</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
+        // PAIEMENT
+        const form = document.getElementById("paiementForm");
+        const propSelect = document.getElementById("select_proprietaire");
+        const locSelect = document.getElementById("select_locataire");
+        const montantInput = document.getElementById("input_montant");
 
-    {% for locataire in proprietaire.locataires.all %}
-    <!-- Modal Modifier Locataire -->
-<div class="modal fade" id="modalModifierLocataire{{ locataire.id }}" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">✏️ Modifier {{ locataire.nom }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form method="post" action="{% url 'modifier_locataire' locataire.id %}">
-          {% csrf_token %}
-          
-          <!-- ✅ Champs pré-remplis -->
-          <div class="mb-3">
-            <label for="nom_loc_{{ locataire.id }}" class="form-label">Nom</label>
-            <input type="text" class="form-control" id="nom_loc_{{ locataire.id }}" name="nom" value="{{ locataire.nom }}" required>
-          </div>
-          
-          <div class="mb-3">
-            <label for="numero_loc_{{ locataire.id }}" class="form-label">Numéro</label>
-            <input type="text" class="form-control" id="numero_loc_{{ locataire.id }}" name="numero" value="{{ locataire.numero }}" required>
-          </div>
-          
-          <div class="mb-3">
-            <label for="loyer_loc_{{ locataire.id }}" class="form-label">Loyer mensuel</label>
-            <input type="number" step="0.01" class="form-control" 
-       id="loyer_loc_{{ locataire.id }}" 
-       name="loyer_mensuel" 
-       value="{{ locataire.loyer_mensuel }}" 
-       required>
-          </div>
-          
-          <div class="mb-3">
-            <label for="proprietaire_loc_{{ locataire.id }}" class="form-label">Propriétaire</label>
-            <select class="form-select" id="proprietaire_loc_{{ locataire.id }}" name="proprietaire" required>
-              {% for prop in proprietaires %}
-                <option value="{{ prop.id }}" {% if prop.id == locataire.proprietaire.id %}selected{% endif %}>
-                  {{ prop.nom }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-          
-          <div class="mt-3 text-end">
-            <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-    <!-- Modal Supprimer Locataire -->
-    <div class="modal fade" id="modalSupprimerLocataire{{ locataire.id }}" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header bg-danger text-white">
-            <h5 class="modal-title">🗑 Supprimer {{ locataire.nom }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form method="post" action="{% url 'supprimer_locataire' locataire.id %}">
-              {% csrf_token %}
-              <p>Confirmer la suppression de <strong>{{ locataire.nom }}</strong> ?</p>
-              <div class="mt-3 text-end">
-                <button type="submit" class="btn btn-danger">🗑 Supprimer</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-    {% endfor %}
-</div>
-
-
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const form = document.getElementById("paiementForm");
-    const propSelect = document.getElementById("select_proprietaire");
-    const locSelect = document.getElementById("select_locataire");
-    const montantInput = document.getElementById("input_montant");
-    
-    // Fonction pour charger les locataires
-    function chargerLocataires(proprietaireId) {
-        if (!proprietaireId) {
-            locSelect.innerHTML = '<option value="">--- Choisissez d\'abord un propriétaire ---</option>';
-            return;
-        }
-        
-        fetch(`/get-locataires/${proprietaireId}/`)
-          .then(r => r.json())
-          .then(data => {
-              locSelect.innerHTML = '<option value="">--- Sélectionnez un locataire ---</option>';
-              data.locataires.forEach(loc => {
-                  locSelect.innerHTML += `<option value="${loc.id}">${loc.nom}</option>`;
-              });
-          });
-    }
-    
-    // Charger locataires quand propriétaire change
-    propSelect.onchange = function() {
-        chargerLocataires(this.value);
-    };
-    
-    // Charger loyer quand locataire change
-    locSelect.onchange = function() {
-        if (!this.value) return;
-        fetch(`/get-loyer/${this.value}/`)
-          .then(r => r.json())
-          .then(data => { montantInput.value = data.loyer || ""; });
-    };
-    
-    // Soumission formulaire
-    form.onsubmit = function(e) {
-        e.preventDefault();
-        fetch("{% url 'ajouter_paiement' %}", {
-            method: "POST",
-            body: new FormData(form),
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-        })
-        .then(r => r.json().then(data => ({status: r.status, data})))
-        .then(({status, data}) => {
-            if (status === 200 && data.success) {
-                alert("✅ Paiement enregistré avec succès !");
-                
-                // ✅ Recharger les locataires du propriétaire actuellement sélectionné
-                const proprietaireId = propSelect.value;
-                chargerLocataires(proprietaireId);
-                
-                // ✅ Réinitialiser le montant
-                montantInput.value = "";
-            } else {
-                alert(data.errors?.__all__?.[0] || "❌ Erreur lors de l'enregistrement");
+        function chargerLocataires(proprietaireId) {
+            if (!proprietaireId) {
+                locSelect.innerHTML = '<option value="">--- Choisissez d\'abord un propriétaire ---</option>';
+                return;
             }
-        });
-    };
-});
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-// Correction immédiate au chargement — avant toute ouverture de modal
-document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll('input[type="number"]').forEach(function(input) {
-        var raw = input.getAttribute('value');
-        if (raw) {
-            input.setAttribute('value', raw.replace(',', '.'));
-            input.value = raw.replace(',', '.');
+            fetch(`/get-locataires/${proprietaireId}/`)
+                .then(r => r.json())
+                .then(data => {
+                    locSelect.innerHTML = '<option value="">--- Sélectionnez un locataire ---</option>';
+                    data.locataires.forEach(loc => {
+                        locSelect.innerHTML += `<option value="${loc.id}">${loc.nom}</option>`;
+                    });
+                });
         }
+
+        propSelect.onchange = function () { chargerLocataires(this.value); };
+
+        locSelect.onchange = function () {
+            if (!this.value) return;
+            fetch(`/get-loyer/${this.value}/`)
+                .then(r => r.json())
+                .then(data => { montantInput.value = data.loyer || ""; });
+        };
+
+        form.onsubmit = function (e) {
+            e.preventDefault();
+            fetch("{% url 'ajouter_paiement' %}", {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            })
+            .then(r => r.json().then(data => ({ status: r.status, data })))
+            .then(({ status, data }) => {
+                if (status === 200 && data.success) {
+                    alert("✅ Paiement enregistré avec succès !");
+                    chargerLocataires(propSelect.value);
+                    montantInput.value = "";
+                } else {
+                    alert(data.errors?.__all__?.[0] || "❌ Erreur lors de l'enregistrement");
+                }
+            });
+        };
+
+        // MODIFIER PROPRIÉTAIRE
+        document.getElementById('modalModifierProprietaire').addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            document.getElementById('edit_prop_nom').value = btn.getAttribute('data-nom');
+            document.getElementById('edit_prop_numero').value = btn.getAttribute('data-numero');
+            document.getElementById('titreModifierProp').textContent = '✏️ Modifier ' + btn.getAttribute('data-nom');
+            document.getElementById('formModifierProprietaire').action = `/proprietaire/modifier/${btn.getAttribute('data-id')}/`;
+        });
+
+        // SUPPRIMER PROPRIÉTAIRE
+        document.getElementById('modalSupprimerProprietaire').addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            document.getElementById('nomSupprimerProp').textContent = btn.getAttribute('data-nom');
+            document.getElementById('formSupprimerProprietaire').action = `/proprietaire/supprimer/${btn.getAttribute('data-id')}/`;
+        });
+
+        // MODIFIER LOCATAIRE
+        document.getElementById('modalModifierLocataire').addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            var loyer = btn.getAttribute('data-loyer').replace(',', '.');
+            document.getElementById('edit_loc_nom').value = btn.getAttribute('data-nom');
+            document.getElementById('edit_loc_numero').value = btn.getAttribute('data-numero');
+            document.getElementById('edit_loc_loyer').value = loyer;
+            document.getElementById('edit_loc_proprietaire').value = btn.getAttribute('data-proprietaire');
+            document.getElementById('titreModifierLoc').textContent = '✏️ Modifier ' + btn.getAttribute('data-nom');
+            document.getElementById('formModifierLocataire').action = `/locataire/modifier/${btn.getAttribute('data-id')}/`;
+        });
+
+        // SUPPRIMER LOCATAIRE
+        document.getElementById('modalSupprimerLocataire').addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            document.getElementById('nomSupprimerLoc').textContent = btn.getAttribute('data-nom');
+            document.getElementById('formSupprimerLocataire').action = `/locataire/supprimer/${btn.getAttribute('data-id')}/`;
+        });
+
     });
-});
-</script>
+    </script>
 
 </body>
 </html>
