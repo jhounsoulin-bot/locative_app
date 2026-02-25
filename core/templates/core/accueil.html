@@ -19,6 +19,14 @@
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLocataire">➕ Ajouter un locataire</button>
     <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalPaiement">💰 Enregistrer un paiement</button>
     <a href="{% url 'parametres' %}" class="btn btn-outline-secondary">⚙️ Paramètres</a>
+  
+    <form method="post" action="{% url 'logout' %}" style="display:inline">
+      {% csrf_token %}
+    <button type="submit" class="btn btn-outline-danger">🚪 Déconnexion</button>
+    </form>
+   
+  
+  
   </div>
 
      
