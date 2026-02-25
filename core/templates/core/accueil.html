@@ -22,7 +22,7 @@
     </div>
 
     <!-- Boutons d'ajout -->
-    <div class="mb-4">
+    <div class="mb-4 d-flex flex-wrap gap-2">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalProprietaire">➕ Ajouter un propriétaire</button>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLocataire">➕ Ajouter un locataire</button>
         <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalPaiement">💰 Enregistrer un paiement</button>
@@ -222,43 +222,67 @@
         </div></div>
     </div>
 
-   <!-- Filtre mois / année -->
-<form method="get" class="d-flex align-items-center gap-3 flex-wrap mb-3">
-    <div>
-        <label class="form-label mb-0 fw-semibold">Mois :</label>
-        <select name="mois" class="form-select form-select-sm w-auto d-inline-block">
-            <option value="">Tous</option>
-            {% for i in mois_list %}
-                <option value="{{ i }}" {% if mois == i|stringformat:"s" %}selected{% endif %}>
-                    Mois {{ i }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
-    <div>
-        <label class="form-label mb-0 fw-semibold">Année :</label>
-        <select name="annee" class="form-select form-select-sm w-auto d-inline-block">
-            <option value="">Toutes</option>
-            {% for a in annee_list %}
-                <option value="{{ a }}" {% if annee == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <button type="submit" class="btn btn-primary btn-sm">🔍 Filtrer</button>
-    <a href="{% url 'accueil' %}" class="btn btn-outline-secondary btn-sm">✖ Réinitialiser</a>
-</form>
+    <!-- FILTRE MOIS / ANNÉE -->
+    <form method="get" class="d-flex align-items-center gap-3 flex-wrap mb-3">
+        <div>
+            <label class="form-label mb-0 fw-semibold">Mois :</label>
+            <select name="mois" class="form-select form-select-sm w-auto d-inline-block">
+                <option value="">Tous</option>
+                {% for i in mois_list %}
+                    <option value="{{ i }}" {% if mois == i|stringformat:"s" %}selected{% endif %}>
+                        {% if i == 1 %}Janvier{% elif i == 2 %}Février{% elif i == 3 %}Mars{% elif i == 4 %}Avril{% elif i == 5 %}Mai{% elif i == 6 %}Juin{% elif i == 7 %}Juillet{% elif i == 8 %}Août{% elif i == 9 %}Septembre{% elif i == 10 %}Octobre{% elif i == 11 %}Novembre{% elif i == 12 %}Décembre{% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label mb-0 fw-semibold">Année :</label>
+            <select name="annee" class="form-select form-select-sm w-auto d-inline-block">
+                <option value="">Toutes</option>
+                {% for a in annee_list %}
+                    <option value="{{ a }}" {% if annee == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">🔍 Filtrer</button>
+        <a href="{% url 'accueil' %}" class="btn btn-outline-secondary btn-sm">✖ Réinitialiser</a>
+    </form>
 
-<!-- Statistiques -->
-<div class="row mb-4">
-    <div class="col-md-2"><strong>Propriétaires :</strong> {{ proprietaires_count }}</div>
-    <div class="col-md-2"><strong>Locataires :</strong> {{ locataires_count }}</div>
-    <div class="col-md-3"><strong>Loyers totaux :</strong> {{ total_loyers }} FCFA</div>
-    <div class="col-md-3"><strong>Loyers reçus :</strong> {{ total_recu }} FCFA</div>
-    <div class="col-md-2"><strong>Commission :</strong> {{ commission }} FCFA</div>
-</div>
+    <!-- STATISTIQUES -->
+    <div class="row mb-4">
+        <div class="col-md-3"><strong>Propriétaires :</strong> {{ proprietaires_count }}</div>
+        <div class="col-md-3"><strong>Locataires :</strong> {{ locataires_count }}</div>
+        <div class="col-md-3"><strong>Loyers reçus :</strong> {{ total_recu }} FCFA</div>
+        <div class="col-md-3"><strong>Commission :</strong> {{ commission }} FCFA</div>
+    </div>
+
+    <!-- BOUTONS NAVIGATION -->
+    <div class="mb-3 d-flex flex-wrap gap-2">
+        <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#nonPayesList">
+            📌 Locataires non payés ({{ non_payes_count }})
+        </button>
+        <a href="{% url 'liste_paiements' %}" class="btn btn-info">💰 Voir les paiements</a>
+        <a href="{% url 'rapport_global' %}" class="btn btn-primary">📊 Rapport global</a>
+        <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger">📄 Rapport global PDF</a>
+    </div>
+
+    <!-- LISTE NON PAYÉS -->
+    <div class="collapse mb-4" id="nonPayesList">
+        <h5>Locataires qui n'ont pas payé {% if mois %}pour le mois {{ mois }}{% endif %}</h5>
+        <ul class="list-group">
+            {% for item in locataires_non_payes %}
+            <li class="list-group-item">
+                <strong>Propriétaire :</strong> {{ item.proprietaire.nom }}
+                → <strong>Locataire :</strong> {{ item.locataire.nom }} (📞 {{ item.locataire.numero }})
+            </li>
+            {% empty %}
+            <li class="list-group-item">✅ Tous les locataires ont payé ce mois</li>
+            {% endfor %}
+        </ul>
+    </div>
 
     <!-- CARTES PROPRIÉTAIRES -->
-    <div class="row mt-4">
+    <div class="row mt-2">
         {% for proprietaire in proprietaires %}
         <div class="col-md-4 mb-3">
             <div class="card shadow">
@@ -283,8 +307,9 @@
                     </button>
 
                     <a href="{% url 'rapport_proprietaire' proprietaire.id %}" class="btn btn-outline-warning mt-2">📊 Rapport mensuel</a>
-                    <a href="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="btn btn-outline-danger mt-3">📄 Télécharger en PDF</a>
+                    <a href="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="btn btn-outline-danger mt-2">📄 Télécharger en PDF</a>
 
+                    <!-- Liste locataires -->
                     <div class="collapse mt-2" id="locataires{{ proprietaire.id }}">
                         <ul class="list-group">
                             {% for locataire in proprietaire.locataires.all %}
@@ -309,6 +334,7 @@
                             {% endfor %}
                         </ul>
                     </div>
+
                 </div>
             </div>
         </div>
