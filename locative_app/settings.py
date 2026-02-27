@@ -2,15 +2,14 @@ import os
 from pathlib import Path
 import dj_database_url
 
+# Sessions
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 28800  # 8 heures
+SESSION_COOKIE_SECURE = False  # False en local, True uniquement sur Render HTTPS
+SESSION_COOKIE_HTTPONLY = True
 
-# Expire la session après 8 heures
-SESSION_COOKIE_AGE = 28800  # secondes = 8h
-
-# Expire la session à la fermeture du navigateur
+# Expire quand le navigateur se ferme
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-
-# Supprimer les sessions expirées automatiquement
-SESSION_SAVE_EVERY_REQUEST = False
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -18,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-default")
 
 # DEBUG : False en production
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 # Hôtes autorisés (Render + local)
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")

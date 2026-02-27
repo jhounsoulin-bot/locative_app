@@ -4,7 +4,8 @@ from core import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", views.accueil, name="accueil"),
+    path("", views.login_view, name="home"),
+    path("accueil/", views.accueil, name="accueil"),
     path("paiements/", views.liste_paiements, name="liste_paiements"),
     path("ajouter-paiement/", views.ajouter_paiement, name="ajouter_paiement"),
     path("paiement/create/<int:proprietaire_id>/", views.paiement_create, name="paiement_create"),

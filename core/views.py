@@ -21,10 +21,18 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
-@admin_required
+
 def login_view(request):
+    # ✅ Vider toute session corrompue d'abord
     if request.session.get('admin_connecte'):
-        return redirect('accueil')
+        try:
+            # Vérifier que le compte existe encore
+            AdminCompte.objects.get(id=request.session.get('admin_id'))
+            return redirect('accueil')
+        except (AdminCompte.DoesNotExist, KeyError):
+            # Session corrompue → on la vide
+            request.session.flush()
+
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
