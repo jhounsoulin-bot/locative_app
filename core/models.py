@@ -18,6 +18,7 @@ class AdminCompte(models.Model):
     class Meta:
         verbose_name = "Compte Admin"
 
+
 class Ville(models.Model):
     nom = models.CharField(max_length=100)
 
@@ -50,50 +51,26 @@ class Locataire(models.Model):
 
 class Paiement(models.Model):
     MOIS_CHOICES = [
-        (1, "Janvier"),
-        (2, "Février"),
-        (3, "Mars"),
-        (4, "Avril"),
-        (5, "Mai"),
-        (6, "Juin"),
-        (7, "Juillet"),
-        (8, "Août"),
-        (9, "Septembre"),
-        (10, "Octobre"),
-        (11, "Novembre"),
-        (12, "Décembre"),
+        (1, "Janvier"), (2, "Février"), (3, "Mars"), (4, "Avril"),
+        (5, "Mai"), (6, "Juin"), (7, "Juillet"), (8, "Août"),
+        (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
     ]
 
-    proprietaire = models.ForeignKey(
-        Proprietaire,
-        on_delete=models.CASCADE,
-        related_name="paiements",
-        verbose_name="Propriétaire"
-    )
-    locataire = models.ForeignKey(
-        Locataire,
-        on_delete=models.CASCADE,
-        related_name="paiements",
-        verbose_name="Locataire"
-    )
+    proprietaire = models.ForeignKey(Proprietaire, on_delete=models.CASCADE, related_name="paiements", verbose_name="Propriétaire")
+    locataire = models.ForeignKey(Locataire, on_delete=models.CASCADE, related_name="paiements", verbose_name="Locataire")
     date_paiement = models.DateField(verbose_name="Date de paiement")
-    mois_concerne = models.IntegerField(
-        choices=MOIS_CHOICES,
-        verbose_name="Mois concerné",
-        null=True,
-        blank=True
-    )
+    mois_concerne = models.IntegerField(choices=MOIS_CHOICES, verbose_name="Mois concerné", null=True, blank=True)
     annee = models.IntegerField(verbose_name="Année", null=True, blank=True)
     montant = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Montant")
+    frais_wc = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Frais WC")
     paye_en_avance = models.BooleanField(default=False, verbose_name="Payé en avance")
-    
+
     def save(self, *args, **kwargs):
-        # Remplir automatiquement l'année depuis date_paiement
         if self.date_paiement and not self.annee:
             self.annee = self.date_paiement.year
         super().save(*args, **kwargs)
-    
-    class Meta:  # ✅ Même indentation que def save
+
+    class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=['locataire', 'mois_concerne', 'annee'],
@@ -101,6 +78,6 @@ class Paiement(models.Model):
             )
         ]
 
-    def __str__(self):  # ✅ Même indentation que class Meta
+    def __str__(self):
         mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "Mois inconnu")
         return f"{self.locataire.nom} - {self.montant} FCFA ({mois_label} {self.annee or self.date_paiement.year})"
