@@ -52,17 +52,24 @@
                 <td><strong>Montant total payé (loyers)</strong></td>
                 <td>{{ total_paye|floatformat:2 }} FCFA</td>
             </tr>
+            {% if total_wc > 0 %}
             <tr>
                 <td><strong>Frais WC collectés</strong></td>
                 <td>{{ total_wc|floatformat:2 }} FCFA</td>
             </tr>
+            {% endif %}
             <tr>
                 <td><strong>Commission agence (10% sur loyers)</strong></td>
                 <td>{{ commission|floatformat:2 }} FCFA</td>
             </tr>
             <tr class="table-success">
-                <td><strong>Total reçu par le propriétaire</strong><br>
-                    <small class="text-muted">(loyers payés - commission + frais WC)</small>
+                <td>
+                    <strong>Total reçu par le propriétaire</strong><br>
+                    {% if total_wc > 0 %}
+                        <small class="text-muted">(loyers payés - commission + frais WC)</small>
+                    {% else %}
+                        <small class="text-muted">(loyers payés - commission)</small>
+                    {% endif %}
                 </td>
                 <td><strong>{{ total_recu_proprietaire|floatformat:2 }} FCFA</strong></td>
             </tr>
@@ -76,7 +83,7 @@
             <tr>
                 <th>Nom du locataire</th>
                 <th>Loyer mensuel</th>
-                <th>Frais WC</th>
+                {% if total_wc > 0 %}<th>Frais WC</th>{% endif %}
                 <th>Statut</th>
             </tr>
         </thead>
@@ -85,7 +92,7 @@
             <tr>
                 <td>{{ locataire.nom }}</td>
                 <td>{{ locataire.loyer|floatformat:2 }} FCFA</td>
-                <td>{{ locataire.frais_wc|floatformat:2 }} FCFA</td>
+                {% if total_wc > 0 %}<td>{{ locataire.frais_wc|floatformat:2 }} FCFA</td>{% endif %}
                 <td>
                     {% if locataire.statut == "Payé" %}
                         <span class="badge bg-success">✅ Payé</span>
@@ -96,7 +103,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4" class="text-center">Aucun locataire trouvé</td>
+                <td colspan="{% if total_wc > 0 %}4{% else %}3{% endif %}" class="text-center">Aucun locataire trouvé</td>
             </tr>
             {% endfor %}
         </tbody>
