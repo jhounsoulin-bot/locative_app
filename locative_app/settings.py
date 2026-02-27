@@ -2,6 +2,16 @@ import os
 from pathlib import Path
 import dj_database_url
 
+
+# Expire la session après 8 heures
+SESSION_COOKIE_AGE = 28800  # secondes = 8h
+
+# Expire la session à la fermeture du navigateur
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Supprimer les sessions expirées automatiquement
+SESSION_SAVE_EVERY_REQUEST = False
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Clé secrète (toujours via variable d'environnement en prod)

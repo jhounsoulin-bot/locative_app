@@ -21,7 +21,7 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
-
+@admin_required
 def login_view(request):
     if request.session.get('admin_connecte'):
         return redirect('accueil')
