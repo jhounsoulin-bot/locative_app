@@ -226,9 +226,9 @@ def rapport_proprietaire(request, proprietaire_id):
 
     total_loyers = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
     total_paye   = sum([p.montant for p in paiements_list]) or Decimal('0')
-    total_wc     = sum([p.frais_wc for p in paiements_list]) or Decimal('0')
+    total_wc     = sum([p.frais_wc for p in paiements_list]) if paiements_list else Decimal('0')
     commission   = total_paye * Decimal("0.1")
-    total_recu_proprietaire = total_paye - commission + total_wc
+    total_recu_proprietaire = total_paye - commission
 
     locataires_data = []
     for locataire in locataires:
@@ -273,9 +273,9 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
 
     total_loyers = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
     total_paye   = sum([p.montant for p in paiements]) or Decimal('0')
-    total_wc     = sum([p.frais_wc for p in paiements]) or Decimal('0')
+    total_wc     = sum([p.frais_wc for p in paiements]) if paiements else Decimal('0')
     commission   = total_paye * Decimal("0.1")
-    total_recu_proprietaire = total_paye - commission + total_wc
+    total_recu_proprietaire = total_paye - commission
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="rapport_{proprietaire.nom}.pdf"'
@@ -283,51 +283,125 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     p = canvas.Canvas(response, pagesize=A4)
     width, height = A4
 
-    p.setFont("Helvetica-Bold", 16)
+    # ── Titre ──
+    p.setFont("Helvetica-Bold", 18)
     p.drawCentredString(width / 2, height - 50, "RAPPORT MENSUEL NIVAL IMPACT")
 
-    p.setFont("Helvetica", 12)
+    # ── Mois / Année ──
+    p.setFont("Helvetica", 13)
     mois_texte = MOIS_FR.get(int(mois), "Non spécifié") if mois and mois.isdigit() else "Non spécifié"
     annee_texte = annee if annee else "Année courante"
-    p.drawCentredString(width / 2, height - 70, f"Mois : {mois_texte} | Année : {annee_texte}")
+    p.drawCentredString(width / 2, height - 75, f"Mois : {mois_texte} | Année : {annee_texte}")
 
-    p.setFont("Helvetica", 12)
-    p.drawString(50, height - 100, f"Propriétaire : {proprietaire.nom}")
-    p.drawString(50, height - 120, f"Montant total loyers : {total_loyers:.2f} FCFA")
-    p.drawString(50, height - 140, f"Montant total payé : {total_paye:.2f} FCFA")
-    p.drawString(50, height - 160, f"Frais WC : {total_wc:.2f} FCFA")
-    p.drawString(50, height - 180, f"Commission agence (10%) : {commission:.2f} FCFA")
-    p.drawString(50, height - 200, f"Total reçu par le propriétaire : {total_recu_proprietaire:.2f} FCFA")
+    # ── Propriétaire ──
+    p.setFont("Helvetica-Bold", 13)
+    p.drawString(50, height - 110, f"Propriétaire : {proprietaire.nom}")
 
-    y = height - 240
-    row_height = 20
-    col_x = [50, 200, 320, 420]
-    col_widths = [150, 120, 100, 100]
+    # ── Récapitulatif financier ──
+    # Ordre : Total loyers → Total perçu → Commission → Montant payé au propriétaire → Frais WC
+    recap_y = height - 145
+    line_h = 28
 
-    headers = ["Locataire", "Loyer", "Frais WC", "Statut"]
+    def draw_recap_line(label, valeur, y):
+        p.setFont("Helvetica", 13)
+        p.drawString(50, y, label)
+        p.setFont("Helvetica-Bold", 13)
+        p.drawRightString(width - 50, y, valeur)
+
+    draw_recap_line("Montant total des loyers :", f"{total_loyers:.2f} FCFA", recap_y)
+    recap_y -= line_h
+    draw_recap_line("Montant total perçu :", f"{total_paye:.2f} FCFA", recap_y)
+    recap_y -= line_h
+    draw_recap_line("Commission agence (10%) :", f"{commission:.2f} FCFA", recap_y)
+    recap_y -= line_h
+
+    # Ligne "Montant payé au propriétaire" avec fond vert clair
+    p.setFillColorRGB(0.85, 0.95, 0.85)
+    p.rect(40, recap_y - 5, width - 80, line_h - 2, stroke=0, fill=1)
+    p.setFillColorRGB(0, 0, 0)
+    draw_recap_line("Montant payé au propriétaire :", f"{total_recu_proprietaire:.2f} FCFA", recap_y)
+    recap_y -= line_h
+
+    # Frais WC seulement si > 0
+    if total_wc > 0:
+        draw_recap_line("Frais de fosse (WC) :", f"{total_wc:.2f} FCFA", recap_y)
+        recap_y -= line_h
+
+    # ── Séparateur ──
+    recap_y -= 10
+    p.setStrokeColorRGB(0.7, 0.7, 0.7)
+    p.line(40, recap_y, width - 40, recap_y)
+    recap_y -= 20
+
+    # ── Tableau des locataires ──
+    p.setFont("Helvetica-Bold", 13)
+    p.drawString(50, recap_y, "Détail par locataire :")
+    recap_y -= 25
+
+    row_height = 22
+    has_wc = total_wc > 0
+
+    if has_wc:
+        col_x = [50, 200, 320, 420]
+        col_widths = [150, 120, 100, 100]
+        headers = ["Locataire", "Loyer", "Frais WC", "Statut"]
+    else:
+        col_x = [50, 230, 390]
+        col_widths = [180, 160, 130]
+        headers = ["Locataire", "Loyer", "Statut"]
+
+    # En-têtes tableau
+    p.setFillColorRGB(0.15, 0.15, 0.35)
+    for i in range(len(headers)):
+        p.rect(col_x[i], recap_y, col_widths[i], row_height, stroke=0, fill=1)
+    p.setFillColorRGB(1, 1, 1)
     p.setFont("Helvetica-Bold", 11)
     for i, header in enumerate(headers):
-        p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
-        p.drawCentredString(col_x[i] + col_widths[i] / 2, y + 5, header)
+        p.drawCentredString(col_x[i] + col_widths[i] / 2, recap_y + 6, header)
+    p.setFillColorRGB(0, 0, 0)
 
-    y -= row_height
-    p.setFont("Helvetica", 10)
-    for locataire in locataires:
-        paiement = next((p for p in paiements if p.locataire_id == locataire.id), None)
+    y = recap_y - row_height
+    p.setFont("Helvetica", 11)
+
+    for idx, locataire in enumerate(locataires):
+        paiement = next((pm for pm in paiements if pm.locataire_id == locataire.id), None)
         wc = paiement.frais_wc if paiement else Decimal('0.00')
         statut = "Payé" if paiement else "Non payé"
 
-        for i, val in enumerate([locataire.nom, f"{locataire.loyer_mensuel:.2f} FCFA", f"{wc:.2f} FCFA", statut]):
-            p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=0)
-            p.drawString(col_x[i] + 5, y + 5, val)
+        # Fond alterné
+        if idx % 2 == 0:
+            p.setFillColorRGB(0.95, 0.95, 1.0)
+        else:
+            p.setFillColorRGB(1, 1, 1)
+
+        if has_wc:
+            vals = [locataire.nom, f"{locataire.loyer_mensuel:.2f} FCFA", f"{wc:.2f} FCFA", statut]
+        else:
+            vals = [locataire.nom, f"{locataire.loyer_mensuel:.2f} FCFA", statut]
+
+        for i, val in enumerate(vals):
+            p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=1)
+            p.setFillColorRGB(0, 0, 0)
+            # Montants en gras
+            if i == 1 or (has_wc and i == 2):
+                p.setFont("Helvetica-Bold", 11)
+            else:
+                p.setFont("Helvetica", 11)
+            p.drawString(col_x[i] + 5, y + 6, val)
+            if idx % 2 == 0:
+                p.setFillColorRGB(0.95, 0.95, 1.0)
+            else:
+                p.setFillColorRGB(1, 1, 1)
 
         y -= row_height
         if y < 100:
             p.showPage()
-            y = height - 100
+            y = height - 60
 
+    # ── Signatures ──
     y -= 40
     p.setFont("Helvetica", 12)
+    p.setFillColorRGB(0, 0, 0)
     p.drawString(50, y, "Signature du gestionnaire")
     p.drawString(width - 200, y, "Signature du propriétaire")
 
