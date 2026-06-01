@@ -15,7 +15,9 @@
 <body class="container mt-4">
 
     <div class="no-print">
-        <form method="get" action="{% url 'rapport_proprietaire' proprietaire.id %}" class="mb-4">
+        <a href="{% url 'accueil' %}" class="btn btn-secondary mb-3">⬅ Retour à l'accueil</a>
+
+        <form method="get" action="{% url 'rapport_proprietaire' proprietaire.id %}" class="mb-3">
             <label for="mois" class="form-label">Choisir le mois :</label>
             <select name="mois" id="mois" class="form-select w-auto d-inline">
                 <option value="">Tous</option>
@@ -50,7 +52,41 @@
 
     <h4>Propriétaire : <strong>{{ proprietaire.nom }}</strong></h4>
 
-    <!-- Récapitulatif financier — nouvel ordre -->
+    <!-- Notification avances encaissées CE mois -->
+    {% if notifications_avance %}
+    <div class="alert alert-warning mt-3">
+        <strong>⚠️ Paiements en avance encaissés ce mois :</strong>
+        <ul class="mb-0 mt-1">
+            {% for n in notifications_avance %}
+            <li>
+                <strong>{{ n.locataire }}</strong> a payé
+                <span class="badge bg-warning text-dark">{{ n.mois_couvert }} {{ n.annee_couverte }}</span>
+                en avance lors du paiement de <strong>{{ n.mois_paye }} {{ n.annee_payee }}</strong>
+                — <strong>{{ n.montant|floatformat:2 }} FCFA</strong>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Notification : locataires qui ont déjà payé CE mois via une avance antérieure -->
+    {% if notifications_deja_paye %}
+    <div class="alert alert-info mt-2">
+        <strong>📢 Déjà payés ce mois via avance :</strong>
+        <ul class="mb-0 mt-1">
+            {% for n in notifications_deja_paye %}
+            <li>
+                <strong>{{ n.locataire }}</strong> a déjà payé
+                <span class="badge bg-info text-dark">{{ n.mois_couvert }} {{ n.annee_couverte }}</span>
+                lors du paiement de <strong>{{ n.mois_paye }} {{ n.annee_payee }}</strong>
+                — <strong>{{ n.montant|floatformat:2 }} FCFA</strong>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Récap chiffres -->
     <table class="table table-bordered w-auto mb-4 fs-6">
         <tbody>
             <tr>
@@ -78,26 +114,45 @@
         </tbody>
     </table>
 
-    <!-- Tableau des locataires -->
+    <!-- Détail par locataire -->
     <h5 class="mt-4">Détail par locataire</h5>
     <table class="table table-striped table-bordered fs-6">
         <thead class="table-dark">
             <tr>
                 <th>Nom du locataire</th>
-                <th>Loyer mensuel</th>
+                <th>Montant encaissé</th>
+                <th>Mois couverts</th>
                 {% if total_wc > 0 %}<th>Frais WC</th>{% endif %}
                 <th>Statut</th>
             </tr>
         </thead>
         <tbody>
-            {% for locataire in locataires_data %}
-            <tr>
-                <td>{{ locataire.nom }}</td>
-                <td class="montant">{{ locataire.loyer|floatformat:2 }} FCFA</td>
-                {% if total_wc > 0 %}<td class="montant">{{ locataire.frais_wc|floatformat:2 }} FCFA</td>{% endif %}
+            {% for loc in locataires_data %}
+            <tr {% if loc.nb_mois > 1 %}class="table-info"{% endif %}>
+                <td><strong>{{ loc.nom }}</strong></td>
+                <td class="montant">
+                    {{ loc.loyer|floatformat:2 }} FCFA
+                    {% if loc.nb_mois > 1 %}
+                        <small class="text-muted d-block">({{ loc.nb_mois }} mois)</small>
+                    {% endif %}
+                </td>
                 <td>
-                    {% if locataire.statut == "Payé" %}
-                        <span class="badge bg-success">✅ Payé</span>
+                    {% if loc.mois_couverts %}
+                        {% for mc in loc.mois_couverts %}
+                            <span class="badge bg-secondary">{{ mc }}</span>
+                        {% endfor %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                {% if total_wc > 0 %}
+                <td class="montant">{{ loc.frais_wc|floatformat:2 }} FCFA</td>
+                {% endif %}
+                <td>
+                    {% if "avance" in loc.statut %}
+                        <span class="badge bg-info text-dark">🔔 {{ loc.statut }}</span>
+                    {% elif "Payé" in loc.statut %}
+                        <span class="badge bg-success">✅ {{ loc.statut }}</span>
                     {% else %}
                         <span class="badge bg-danger">❌ Non payé</span>
                     {% endif %}
@@ -105,7 +160,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="{% if total_wc > 0 %}4{% else %}3{% endif %}" class="text-center">Aucun locataire trouvé</td>
+                <td colspan="{% if total_wc > 0 %}5{% else %}4{% endif %}" class="text-center">Aucun locataire trouvé</td>
             </tr>
             {% endfor %}
         </tbody>

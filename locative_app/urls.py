@@ -28,4 +28,5 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('parametres/', views.parametres_view, name='parametres'),
+    path('archives/', views.archives, name='archives'),
 ]

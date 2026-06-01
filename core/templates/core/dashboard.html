@@ -1,130 +1,112 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Dashboard Global</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        table {
-            border-collapse: collapse;
-            width: 80%;
-            margin-top: 20px;
-        }
-        table, th, td {
-            border: 1px solid black;
-        }
-        th, td {
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Dashboard Global</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    table { border-collapse: collapse; width: 80%; margin-top: 20px; }
+    table, th, td { border: 1px solid black; }
+    th, td { padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; }
+  </style>
 </head>
 <body>
-    <h1>📊 Dashboard Global</h1>
+  <h1>📊 Dashboard Global</h1>
 
-    <!-- Formulaire de filtres -->
-    <form method="get" action="">
-        <label for="proprietaire">Choisir un propriétaire :</label>
-        <select name="proprietaire" id="proprietaire" onchange="this.form.submit()">
-            <option value="">-- Tous les propriétaires --</option>
-            {% for p in proprietaires %}
-                <option value="{{ p.id }}" {% if proprietaire and proprietaire.id == p.id %}selected{% endif %}>
-                    {{ p.nom }}
-                </option>
-            {% endfor %}
-        </select>
+  <form method="get" action="">
+    <label for="proprietaire">Choisir un propriétaire :</label>
+    <select name="proprietaire" id="proprietaire" onchange="this.form.submit()">
+      <option value="">-- Tous les propriétaires --</option>
+      {% for p in proprietaires %}
+          <option value="{{ p.id }}" {% if proprietaire and proprietaire.id == p.id %}selected{% endif %}>
+              {{ p.nom }}
+          </option>
+      {% endfor %}
+    </select>
 
-        <label for="mois">Choisir un mois :</label>
-        <select name="mois" id="mois" onchange="this.form.submit()">
-            <option value="">-- Tous les mois --</option>
-            {% for num, nom in mois_list %}
-                <option value="{{ num }}" {% if mois == num|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
-            {% endfor %}
-        </select>
-    </form>
+    <label for="mois">Choisir un mois :</label>
+    <select name="mois" id="mois" onchange="this.form.submit()">
+      <option value="">-- Tous les mois --</option>
+      {% for num, nom in mois_list %}
+          <option value="{{ num }}" {% if mois == num|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
+      {% endfor %}
+    </select>
+  </form>
 
-    <!-- Bouton Export PDF -->
-    <p>
-        <a href="{% url 'dashboard_pdf' %}{% if mois %}?mois={{ mois }}{% endif %}{% if proprietaire %}&proprietaire={{ proprietaire.id }}{% endif %}" target="_blank">
-            📄 Exporter en PDF
-        </a>
-    </p>
+  <p>
+    <a href="{% url 'dashboard_pdf' %}{% if mois %}?mois={{ mois }}{% endif %}{% if proprietaire %}&proprietaire={{ proprietaire.id }}{% endif %}" target="_blank">
+      📄 Exporter en PDF
+    </a>
+  </p>
 
-    <!-- Statistiques -->
-    <ul>
-        <li>Nombre de propriétaires : {{ proprietaires_count|default:0 }}</li>
-        <li>Nombre de locataires : {{ locataires_count|default:0 }}</li>
-        <li>Montant total loyers locataires : {{ total_loyers_locataires|default:0 }}</li>
-        <li>Total loyers reçus : {{ total_recu|default:0 }}</li>
-        <li>Loyer restant (impayés) : {{ loyer_restant|default:0 }}</li>
-        <li>Commission totale entreprise : {{ commission_totale|default:0 }}</li>
-    </ul>
+  <ul>
+    <li>Nombre de propriétaires : {{ proprietaires_count|default:0 }}</li>
+    <li>Nombre de locataires : {{ locataires_count|default:0 }}</li>
+    <li>Montant total loyers locataires : {{ total_loyers_locataires|default:0 }}</li>
+    <li>Total loyers reçus : {{ total_recu|default:0 }}</li>
+    <li>Loyer restant (impayés) : {{ loyer_restant|default:0 }}</li>
+    <li>Commission totale entreprise : {{ commission_totale|default:0 }}</li>
+  </ul>
 
-    <!-- Graphiques -->
-    <div style="display:flex; gap:40px; flex-wrap:wrap;">
-        <canvas id="barChart" style="max-width:500px; height:250px;"></canvas>
-        <canvas id="pieChart" style="max-width:400px; height:250px;"></canvas>
-    </div>
+  <div style="display:flex; gap:40px; flex-wrap:wrap;">
+    <canvas id="barChart" style="max-width:500px; height:250px;"></canvas>
+    <canvas id="pieChart" style="max-width:400px; height:250px;"></canvas>
+  </div>
 
-    <script>
-        // Diagramme en barres
-        new Chart(document.getElementById('barChart'), {
-            type: 'bar',
-            data: {
-                labels: ['Loyers totaux', 'Loyers reçus', 'Loyers impayés', 'Commission'],
-                datasets: [{
-                    label: 'Montants (FCFA)',
-                    data: [
-                        {{ total_loyers_locataires|default:0 }},
-                        {{ total_recu|default:0 }},
-                        {{ loyer_restant|default:0 }},
-                        {{ commission_totale|default:0 }}
-                    ],
-                    backgroundColor: ['green', 'blue', 'orange', 'purple']
-                }]
-            }
-        });
+  <script>
+    new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Loyers totaux', 'Loyers reçus', 'Loyers impayés', 'Commission'],
+        datasets: [{
+          label: 'Montants (FCFA)',
+          data: [
+            {{ total_loyers_locataires|default:0 }},
+            {{ total_recu|default:0 }},
+            {{ loyer_restant|default:0 }},
+            {{ commission_totale|default:0 }}
+          ],
+          backgroundColor: ['green', 'blue', 'orange', 'purple']
+        }]
+      }
+    });
 
-        // Camembert
-        new Chart(document.getElementById('pieChart'), {
-            type: 'pie',
-            data: {
-                labels: ['Payés', 'Impayés'],
-                datasets: [{
-                    data: [{{ locataires_payes|default:0 }}, {{ locataires_impayes|default:0 }}],
-                    backgroundColor: ['green', 'red']
-                }]
-            }
-        });
-    </script>
+    new Chart(document.getElementById('pieChart'), {
+      type: 'pie',
+      data: {
+        labels: ['Payés', 'Impayés'],
+        datasets: [{
+          data: [{{ locataires_payes|default:0 }}, {{ locataires_impayes|default:0 }}],
+          backgroundColor: ['green', 'red']
+        }]
+      }
+    });
+  </script>
 
-    <!-- Tableau des locataires -->
-    <h2>📋 Détail des locataires</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Locataire</th>
-                <th>Montant payé</th>
-                <th>Statut</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for locataire in locataires_data %}
-                <tr>
-                    <td>{{ locataire.nom }}</td>
-                    <td>{{ locataire.montant|default:0 }}</td>
-                    <td>{{ locataire.statut }}</td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="3">Aucun locataire trouvé</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+  <h2>📋 Détail des locataires</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Locataire</th>
+        <th>Montant payé</th>
+        <th>Statut</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for locataire in locataires_data %}
+        <tr>
+          <td>{{ locataire.nom }}</td>
+          <td>{{ locataire.montant|default:0 }}</td>
+          <td>{{ locataire.statut }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="3">Aucun locataire trouvé</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
 </body>
 </html>

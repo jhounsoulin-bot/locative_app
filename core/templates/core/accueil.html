@@ -100,18 +100,28 @@
                         <label>Date de paiement</label>
                         <input type="date" name="date_paiement" id="input_date" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
                     </div>
-                    <div class="mb-3">
-                        <label>Mois concerné</label>
-                        <select name="mois_concerne" id="select_mois" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
-                            <option value="">---</option>
-                            <option value="1">Janvier</option><option value="2">Février</option>
-                            <option value="3">Mars</option><option value="4">Avril</option>
-                            <option value="5">Mai</option><option value="6">Juin</option>
-                            <option value="7">Juillet</option><option value="8">Août</option>
-                            <option value="9">Septembre</option><option value="10">Octobre</option>
-                            <option value="11">Novembre</option><option value="12">Décembre</option>
-                        </select>
-                    </div>
+                    
+
+<!-- APRÈS -->
+<div class="mb-3">
+    <label>Mois concerné(s) <small class="text-muted">(Ctrl+clic pour sélectionner plusieurs)</small></label>
+    <select name="mois_concerne" id="select_mois" required multiple
+        style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;height:160px;">
+        <option value="1">Janvier</option>
+        <option value="2">Février</option>
+        <option value="3">Mars</option>
+        <option value="4">Avril</option>
+        <option value="5">Mai</option>
+        <option value="6">Juin</option>
+        <option value="7">Juillet</option>
+        <option value="8">Août</option>
+        <option value="9">Septembre</option>
+        <option value="10">Octobre</option>
+        <option value="11">Novembre</option>
+        <option value="12">Décembre</option>
+    </select>
+    <small class="text-muted">Maintenez Ctrl (ou Cmd sur Mac) pour sélectionner plusieurs mois</small>
+</div>
                     <div class="mb-3">
                         <label><input type="checkbox" name="paye_en_avance" id="input_avance"> Payé en avance</label>
                     </div>
@@ -261,15 +271,17 @@
         <div class="col-md-3"><strong>Commission :</strong> {{ commission }} FCFA</div>
     </div>
 
-    <!-- BOUTONS NAVIGATION -->
-    <div class="mb-3 d-flex flex-wrap gap-2">
-        <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#nonPayesList">
-            📌 Locataires non payés ({{ non_payes_count }})
-        </button>
-        <a href="{% url 'liste_paiements' %}" class="btn btn-info">💰 Voir les paiements</a>
-        <a href="{% url 'rapport_global' %}" class="btn btn-primary">📊 Rapport global</a>
-        <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger">📄 Rapport global PDF</a>
-    </div>
+
+<!-- APRÈS -->
+<div class="mb-3 d-flex flex-wrap gap-2">
+    <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target="#nonPayesList">
+        📌 Locataires non payés ({{ non_payes_count }})
+    </button>
+    <a href="{% url 'liste_paiements' %}" class="btn btn-info">💰 Voir les paiements</a>
+    <a href="{% url 'rapport_global' %}" class="btn btn-primary">📊 Rapport global</a>
+    <a href="{% url 'rapport_global_pdf' %}" class="btn btn-danger">📄 Rapport global PDF</a>
+    <a href="{% url 'archives' %}" class="btn btn-secondary">🗄️ Archives</a>  <!-- ← AJOUTER -->
+</div>
 
     <!-- LISTE NON PAYÉS -->
     <div class="collapse mb-4" id="nonPayesList">
@@ -286,63 +298,73 @@
         </ul>
     </div>
 
-    <!-- CARTES PROPRIÉTAIRES -->
-    <div class="row mt-2">
-        {% for proprietaire in proprietaires %}
-        <div class="col-md-4 mb-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h5 class="card-title">{{ proprietaire.nom }}</h5>
-                    <p class="card-text">📞 {{ proprietaire.numero }}</p>
+   <!-- CARTES PROPRIÉTAIRES -->
+<div class="row mt-2">
+    {% for item in proprietaires_avec_locataires %}
+    {% with proprietaire=item.proprietaire %}
+    <div class="col-md-4 mb-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">{{ proprietaire.nom }}</h5>
+                <p class="card-text">📞 {{ proprietaire.numero }}</p>
 
-                    <button class="btn btn-sm btn-primary"
-                        data-bs-toggle="modal" data-bs-target="#modalModifierProprietaire"
-                        data-id="{{ proprietaire.id }}"
-                        data-nom="{{ proprietaire.nom }}"
-                        data-numero="{{ proprietaire.numero }}">✏️ Modifier</button>
+                <button class="btn btn-sm btn-primary"
+                    data-bs-toggle="modal" data-bs-target="#modalModifierProprietaire"
+                    data-id="{{ proprietaire.id }}"
+                    data-nom="{{ proprietaire.nom }}"
+                    data-numero="{{ proprietaire.numero }}">✏️ Modifier</button>
 
-                    <button class="btn btn-sm btn-danger"
-                        data-bs-toggle="modal" data-bs-target="#modalSupprimerProprietaire"
-                        data-id="{{ proprietaire.id }}"
-                        data-nom="{{ proprietaire.nom }}">🗑 Supprimer</button>
+                <button class="btn btn-sm btn-danger"
+                    data-bs-toggle="modal" data-bs-target="#modalSupprimerProprietaire"
+                    data-id="{{ proprietaire.id }}"
+                    data-nom="{{ proprietaire.nom }}">🗑 Supprimer</button>
 
-                    <button class="btn btn-outline-primary mt-2" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#locataires{{ proprietaire.id }}">
-                        Voir les locataires
-                    </button>
+                <button class="btn btn-outline-primary mt-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#locataires{{ proprietaire.id }}">
+                    Voir les locataires
+                </button>
 
-                    <a href="{% url 'rapport_proprietaire' proprietaire.id %}" class="btn btn-outline-warning mt-2">📊 Rapport mensuel</a>
-                    <a href="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="btn btn-outline-danger mt-2">📄 PDF</a>
+                <a href="{% url 'rapport_proprietaire' proprietaire.id %}" class="btn btn-outline-warning mt-2">📊 Rapport mensuel</a>
+                <a href="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="btn btn-outline-danger mt-2">📄 PDF</a>
 
-                    <div class="collapse mt-2" id="locataires{{ proprietaire.id }}">
-                        <ul class="list-group">
-                            {% for locataire in proprietaire.locataires.all %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>{{ locataire.nom }} - {{ locataire.numero }} - {{ locataire.loyer_mensuel }} FCFA</span>
-                                <span>
-                                    <button class="btn btn-sm btn-primary"
-                                        data-bs-toggle="modal" data-bs-target="#modalModifierLocataire"
-                                        data-id="{{ locataire.id }}"
-                                        data-nom="{{ locataire.nom }}"
-                                        data-numero="{{ locataire.numero }}"
-                                        data-loyer="{{ locataire.loyer_mensuel }}"
-                                        data-proprietaire="{{ locataire.proprietaire.id }}">✏️</button>
-                                    <button class="btn btn-sm btn-danger"
-                                        data-bs-toggle="modal" data-bs-target="#modalSupprimerLocataire"
-                                        data-id="{{ locataire.id }}"
-                                        data-nom="{{ locataire.nom }}">🗑</button>
-                                </span>
+                <div class="collapse mt-2" id="locataires{{ proprietaire.id }}">
+                    <ul class="list-group">
+                        {% if item.locataires %}
+                            {% for loc_info in item.locataires %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+                                    <span>
+                                        <strong>{{ loc_info.locataire.nom }}</strong>
+                                        — {{ loc_info.locataire.numero }} — {{ loc_info.locataire.loyer_mensuel }} FCFA
+                                        
+                                    </span>
+                                    <span class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-primary"
+                                            data-bs-toggle="modal" data-bs-target="#modalModifierLocataire"
+                                            data-id="{{ loc_info.locataire.id }}"
+                                            data-nom="{{ loc_info.locataire.nom }}"
+                                            data-numero="{{ loc_info.locataire.numero }}"
+                                            data-loyer="{{ loc_info.locataire.loyer_mensuel }}"
+                                            data-proprietaire="{{ loc_info.locataire.proprietaire.id }}">✏️</button>
+                                        <button class="btn btn-sm btn-danger"
+                                            data-bs-toggle="modal" data-bs-target="#modalSupprimerLocataire"
+                                            data-id="{{ loc_info.locataire.id }}"
+                                            data-nom="{{ loc_info.locataire.nom }}">🗑</button>
+                                    </span>
+                                </div>
                             </li>
-                            {% empty %}
-                            <li class="list-group-item">Aucun locataire</li>
                             {% endfor %}
-                        </ul>
-                    </div>
+                        {% else %}
+                            <li class="list-group-item">Aucun locataire</li>
+                        {% endif %}
+                    </ul>
                 </div>
             </div>
         </div>
-        {% endfor %}
     </div>
+    {% endwith %}
+    {% endfor %}
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -376,24 +398,38 @@
                 .then(data => { montantInput.value = data.loyer || ""; });
         };
 
-        form.onsubmit = function (e) {
-            e.preventDefault();
-            fetch("{% url 'ajouter_paiement' %}", {
-                method: "POST",
-                body: new FormData(form),
-                headers: { "X-Requested-With": "XMLHttpRequest" }
-            })
-            .then(r => r.json().then(data => ({ status: r.status, data })))
-            .then(({ status, data }) => {
-                if (status === 200 && data.success) {
-                    alert("✅ Paiement enregistré avec succès !");
-                    chargerLocataires(propSelect.value);
-                    montantInput.value = "";
-                } else {
-                    alert(data.errors?.__all__?.[0] || "❌ Erreur lors de l'enregistrement");
-                }
-            });
-        };
+        
+
+// APRÈS
+form.onsubmit = function (e) {
+    e.preventDefault();
+
+    // Vérifier qu'au moins un mois est sélectionné
+    const moisSelect = document.getElementById("select_mois");
+    const moisSelectionnes = Array.from(moisSelect.selectedOptions);
+    if (moisSelectionnes.length === 0) {
+        alert("⚠️ Veuillez sélectionner au moins un mois.");
+        return;
+    }
+
+    fetch("{% url 'ajouter_paiement' %}", {
+        method: "POST",
+        body: new FormData(form),
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(r => r.json().then(data => ({ status: r.status, data })))
+    .then(({ status, data }) => {
+        if (data.success) {
+            alert(`✅ ${moisSelectionnes.length} paiement(s) enregistré(s) avec succès !`);
+            chargerLocataires(propSelect.value);
+            montantInput.value = "";
+            // Désélectionner tous les mois
+            Array.from(moisSelect.options).forEach(opt => opt.selected = false);
+        } else {
+            alert(data.errors?.__all__?.[0] || "❌ Erreur lors de l'enregistrement");
+        }
+    });
+};
 
         document.getElementById('modalModifierProprietaire').addEventListener('show.bs.modal', function (event) {
             var btn = event.relatedTarget;

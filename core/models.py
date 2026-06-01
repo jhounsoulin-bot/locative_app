@@ -29,6 +29,7 @@ class Ville(models.Model):
 class Proprietaire(models.Model):
     nom = models.CharField(max_length=100)
     numero = models.CharField(max_length=20, default="0000000000")
+    is_deleted = models.BooleanField(default=False)  # ← AJOUTÉ
 
     def __str__(self):
         return self.nom
@@ -40,13 +41,16 @@ class Locataire(models.Model):
     loyer_mensuel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     proprietaire = models.ForeignKey(
         Proprietaire,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_DEFAULT,   # ← MODIFIÉ (était CASCADE)
         related_name="locataires",
-        verbose_name="Propriétaire"
+        verbose_name="Propriétaire",
+        default=None,                   # ← AJOUTÉ
+        null=True,                      # ← AJOUTÉ
     )
+    is_deleted = models.BooleanField(default=False)  # ← AJOUTÉ
 
     def __str__(self):
-        return f"{self.nom} ({self.proprietaire.nom})"
+        return f"{self.nom} ({self.proprietaire.nom if self.proprietaire else 'Propriétaire supprimé'})"
 
 
 class Paiement(models.Model):
@@ -56,8 +60,20 @@ class Paiement(models.Model):
         (9, "Septembre"), (10, "Octobre"), (11, "Novembre"), (12, "Décembre"),
     ]
 
-    proprietaire = models.ForeignKey(Proprietaire, on_delete=models.CASCADE, related_name="paiements", verbose_name="Propriétaire")
-    locataire = models.ForeignKey(Locataire, on_delete=models.CASCADE, related_name="paiements", verbose_name="Locataire")
+    proprietaire = models.ForeignKey(
+        Proprietaire,
+        on_delete=models.SET_NULL,  # ← MODIFIÉ (était CASCADE)
+        related_name="paiements",
+        verbose_name="Propriétaire",
+        null=True,                  # ← AJOUTÉ
+    )
+    locataire = models.ForeignKey(
+        Locataire,
+        on_delete=models.SET_NULL,  # ← MODIFIÉ (était CASCADE)
+        related_name="paiements",
+        verbose_name="Locataire",
+        null=True,                  # ← AJOUTÉ
+    )
     date_paiement = models.DateField(verbose_name="Date de paiement")
     mois_concerne = models.IntegerField(choices=MOIS_CHOICES, verbose_name="Mois concerné", null=True, blank=True)
     annee = models.IntegerField(verbose_name="Année", null=True, blank=True)
@@ -80,4 +96,5 @@ class Paiement(models.Model):
 
     def __str__(self):
         mois_label = dict(self.MOIS_CHOICES).get(self.mois_concerne, "Mois inconnu")
-        return f"{self.locataire.nom} - {self.montant} FCFA ({mois_label} {self.annee or self.date_paiement.year})"
+        locataire_nom = self.locataire.nom if self.locataire else "[Supprimé]"
+        return f"{locataire_nom} - {self.montant} FCFA ({mois_label} {self.annee or self.date_paiement.year})"
