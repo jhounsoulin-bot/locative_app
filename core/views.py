@@ -303,110 +303,140 @@ def ajouter_paiement(request):
 # RAPPORT PROPRIÉTAIRE HTML
 # -------------------------
 def rapport_proprietaire(request, proprietaire_id):
-    proprietaire = get_object_or_404(Proprietaire.objects.prefetch_related("locataires"), id=proprietaire_id)
-    locataires = proprietaire.locataires.filter(is_deleted=False)
-    paiements = Paiement.objects.filter(locataire__proprietaire=proprietaire).select_related("locataire")
+    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
+    
+    # ← TOUS les locataires (actifs + supprimés) pour les rapports historiques
+    locataires = proprietaire.locataires.all()
+    
+    paiements = Paiement.objects.filter(
+        locataire__proprietaire=proprietaire
+    ).select_related("locataire")
 
     mois = request.GET.get("mois")
     annee = request.GET.get("annee")
-    mois_rapport = ""
-    mois_int = int(mois) if mois and mois.isdigit() else None
+    mois_int  = int(mois)  if mois  and mois.isdigit()  else None
     annee_int = int(annee) if annee and annee.isdigit() else None
 
-    # Filtre sur date_paiement (mois d'encaissement)
     if mois_int:
         paiements = paiements.filter(date_paiement__month=mois_int)
         mois_rapport = MOIS_FR.get(mois_int, "")
+    else:
+        mois_rapport = ""
     if annee_int:
         paiements = paiements.filter(date_paiement__year=annee_int)
 
     paiements_list = list(paiements)
 
     total_loyers = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
-    total_paye   = sum([p.montant for p in paiements_list]) or Decimal('0')
-    total_wc     = sum([p.frais_wc for p in paiements_list]) or Decimal('0')
+    total_paye   = sum([p.montant for p in paiements_list])   or Decimal('0')
+    total_wc     = sum([p.frais_wc for p in paiements_list])  or Decimal('0')
     commission   = total_paye * Decimal("0.1")
     total_recu_proprietaire = total_paye - commission
 
-    # ── Notifications avances : mois couverts FUTURS encaissés ce mois ──
+    # Notifications avances
     notifications_avance = []
     for p in paiements_list:
-        mois_p  = p.date_paiement.month
-        annee_p = p.date_paiement.year
-        # C'est un paiement en avance si le mois couvert est après le mois d'encaissement
-        mois_couvert_futur = (p.annee > annee_p) or (p.annee == annee_p and p.mois_concerne > mois_p)
-        if mois_couvert_futur:
+        if p.locataire is None:
+            continue
+        mois_p, annee_p = p.date_paiement.month, p.date_paiement.year
+        if (p.annee > annee_p) or (p.annee == annee_p and p.mois_concerne > mois_p):
             notifications_avance.append({
-                "locataire": p.locataire.nom,
-                "mois_couvert": MOIS_FR.get(p.mois_concerne, ""),
+                "locataire":      p.locataire.nom,
+                "mois_couvert":   MOIS_FR.get(p.mois_concerne, ""),
                 "annee_couverte": p.annee,
-                "mois_paye": MOIS_FR.get(mois_p, ""),
-                "annee_payee": annee_p,
-                "montant": p.montant,
+                "mois_paye":      MOIS_FR.get(mois_p, ""),
+                "annee_payee":    annee_p,
+                "montant":        p.montant,
             })
 
-    # ── Données par locataire ──
-    locataires_data = []
-    for locataire in locataires:
-        paiements_loc = [p for p in paiements_list if p.locataire_id == locataire.id]
+    # Notifications déjà payés via avance
+    notifications_deja_paye = []
+    tous_paiements = list(Paiement.objects.filter(locataire__proprietaire=proprietaire))
+    if mois_int and annee_int:
+        for loc in locataires.filter(is_deleted=False):  # ← seulement actifs pour cette notif
+            paye_ce_mois = any(p.locataire_id == loc.id for p in paiements_list)
+            if not paye_ce_mois:
+                avance = next(
+                    (p for p in tous_paiements
+                     if p.locataire_id == loc.id
+                     and p.mois_concerne == mois_int
+                     and p.annee == annee_int
+                     and (p.date_paiement.month != mois_int or p.date_paiement.year != annee_int)),
+                    None
+                )
+                if avance:
+                    notifications_deja_paye.append({
+                        "locataire":      loc.nom,
+                        "mois_couvert":   MOIS_FR.get(mois_int, ""),
+                        "annee_couverte": annee_int,
+                        "mois_paye":      MOIS_FR.get(avance.date_paiement.month, ""),
+                        "annee_payee":    avance.date_paiement.year,
+                        "montant":        avance.montant,
+                    })
 
-        # Somme tous les montants encaissés ce mois (peut couvrir plusieurs mois)
+    # Données par locataire
+    locataires_data = []
+    for loc in locataires:
+        paiements_loc  = [p for p in paiements_list if p.locataire_id == loc.id]
         montant_total  = sum([p.montant for p in paiements_loc]) or Decimal('0')
         frais_wc_total = sum([p.frais_wc for p in paiements_loc]) or Decimal('0')
-
-        # Détail des mois couverts par ces paiements
-        mois_couverts = [
+        nb             = len(paiements_loc)
+        mois_couverts  = [
             f"{MOIS_FR.get(p.mois_concerne, '')} {p.annee}"
             for p in paiements_loc
         ]
 
-        # Statut
         if not paiements_loc:
-            # Vérifier si ce locataire a déjà payé ce mois via un paiement en avance antérieur
-            avance_existante = Paiement.objects.filter(
-                locataire=locataire,
-                mois_concerne=mois_int,
-                annee=annee_int or (paiements_list[0].date_paiement.year if paiements_list else None)
-            ).first() if mois_int else None
-
-            if avance_existante:
-                statut = f"Payé en avance ({MOIS_FR.get(avance_existante.date_paiement.month, '')} {avance_existante.date_paiement.year})"
+            avance = next(
+                (p for p in tous_paiements
+                 if p.locataire_id == loc.id
+                 and p.mois_concerne == mois_int
+                 and p.annee == annee_int
+                 and mois_int and annee_int
+                 and (p.date_paiement.month != mois_int or p.date_paiement.year != annee_int)),
+                None
+            )
+            if avance:
+                statut = f"Payé en avance ({MOIS_FR.get(avance.date_paiement.month, '')} {avance.date_paiement.year})"
             else:
                 statut = "Non payé"
+        elif nb > 1:
+            statut = f"Payé ({nb} mois : {', '.join(mois_couverts)})"
         else:
-            nb = len(paiements_loc)
-            if nb > 1:
-                statut = f"Payé ({nb} mois : {', '.join(mois_couverts)})"
+            p0 = paiements_loc[0]
+            if (p0.annee > p0.date_paiement.year) or \
+               (p0.annee == p0.date_paiement.year and p0.mois_concerne > p0.date_paiement.month):
+                statut = f"Payé en avance → {MOIS_FR.get(p0.mois_concerne, '')} {p0.annee}"
             else:
-                # Vérifier si c'est un paiement en avance (mois couvert != mois encaissé)
-                p = paiements_loc[0]
-                if p.mois_concerne != p.date_paiement.month or p.annee != p.date_paiement.year:
-                    statut = f"Payé (couvre {MOIS_FR.get(p.mois_concerne, '')} {p.annee})"
-                else:
-                    statut = "Payé"
+                statut = "Payé"
+
+        # ← Indiquer si le locataire est supprimé
+        nom_affiche = loc.nom if not loc.is_deleted else f"{loc.nom} (archivé)"
 
         locataires_data.append({
-            "nom": locataire.nom,
-            "loyer": montant_total,
-            "frais_wc": frais_wc_total,
-            "statut": statut,
+            "nom":          nom_affiche,
+            "loyer":        montant_total,
+            "frais_wc":     frais_wc_total,
+            "statut":       statut,
             "mois_couverts": mois_couverts,
-            "nb_mois": len(paiements_loc),
+            "nb_mois":      nb,
+            "is_deleted":   loc.is_deleted,
         })
 
     context = {
-        "proprietaire": proprietaire,
-        "total_loyers": total_loyers,
-        "total_paye": total_paye,
-        "total_wc": total_wc,
-        "commission": commission,
+        "proprietaire":          proprietaire,
+        "total_loyers":          total_loyers,
+        "total_paye":            total_paye,
+        "total_wc":              total_wc,
+        "commission":            commission,
         "total_recu_proprietaire": total_recu_proprietaire,
-        "locataires_data": locataires_data,
-        "mois_list": [(i, MOIS_FR[i]) for i in range(1, 13)],
-        "mois_rapport": mois_rapport,
-        "mois": mois,
-        "annee": annee,
-        "notifications_avance": notifications_avance,  # ← NOUVEAU
+        "locataires_data":       locataires_data,
+        "mois_list":             [(i, MOIS_FR[i]) for i in range(1, 13)],
+        "mois_rapport":          mois_rapport,
+        "mois":                  mois,
+        "annee":                 annee,
+        "notifications_avance":  notifications_avance,
+        "notifications_deja_paye": notifications_deja_paye,
     }
     return render(request, "core/rapport_proprietaire.html", context)
 # -------------------------
@@ -416,7 +446,7 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
     mois = request.GET.get("mois")
     annee = request.GET.get("annee")
     proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    locataires = proprietaire.locataires.filter(is_deleted=False)
+    locataires = proprietaire.locataires.all()  # ← inclut les supprimés
     tous_paiements = list(Paiement.objects.filter(locataire__in=locataires))
 
     mois_int  = int(mois)  if mois  and mois.isdigit()  else None
@@ -726,8 +756,12 @@ def rapport_global(request):
     mois_int  = int(mois)  if mois  and mois.isdigit()  else None
     annee_int = int(annee) if annee and annee.isdigit() else None
 
+
+
+# APRÈS
+    proprietaires = Proprietaire.objects.prefetch_related("locataires")  # déjà sans filtre is_deleted
     for proprietaire in proprietaires:
-        locataires    = proprietaire.locataires.filter(is_deleted=False)
+        locataires = proprietaire.locataires.all()  # ← tous les locataires
         tous_paiements = list(Paiement.objects.filter(locataire__in=locataires))
 
         # Paiements encaissés ce mois (filtre date_paiement)
@@ -844,7 +878,7 @@ def rapport_global_pdf(request):
     def wrap_text(text, max_chars):
         words = text.split()
         lines = []
-        current = ""
+        current = "" 
         for word in words:
             if len(current) + len(word) + 1 <= max_chars:
                 current = (current + " " + word).strip()
@@ -910,7 +944,7 @@ def rapport_global_pdf(request):
         return hy
 
     for idx, proprietaire in enumerate(proprietaires):
-        locataires     = proprietaire.locataires.filter(is_deleted=False)
+        locataires = proprietaire.locataires.all()
         tous_paiements = list(Paiement.objects.filter(locataire__in=locataires))
 
         paiements = tous_paiements
