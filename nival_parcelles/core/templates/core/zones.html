@@ -1,0 +1,59 @@
+{% extends 'core/base.html' %}
+{% block title %}Zones{% endblock %}
+{% block nav_zones %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>📍 Gestion des zones</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalZone">➕ Ajouter</button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Nom de la zone</th><th>Lotissements</th><th>Parcelles</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for zone in zones %}
+                <tr>
+                    <td><strong>{{ zone.nom }}</strong></td>
+                    <td>{{ zone.lotissements.count }}</td>
+                    <td>{{ zone.lotissements.all|length }}</td>
+                    <td>
+                        <form method="post" action="{% url 'supprimer_zone' zone.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer cette zone ?')">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted">Aucune zone</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal ajout zone -->
+<div class="modal fade" id="modalZone" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">➕ Ajouter une zone</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Nom de la zone</label>
+                    <input type="text" name="nom" class="form-control" required>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endblock %}

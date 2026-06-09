@@ -6,3 +6,4 @@ whitenoise
 reportlab
 Pillow
 python-decouple 
+python-dateutil

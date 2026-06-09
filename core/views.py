@@ -11,7 +11,7 @@ from datetime import datetime
 from django.contrib import messages
 from .models import AdminCompte
 from functools import wraps
-
+from dateutil.relativedelta import relativedelta  # pip install python-dateutil
 
 def admin_required(view_func):
     @wraps(view_func)
@@ -299,41 +299,49 @@ def ajouter_paiement(request):
     else:
         form = PaiementForm()
     return render(request, "core/ajouter_paiement.html", {"form": form})
-# -------------------------
-# RAPPORT PROPRIÉTAIRE HTML
-# -------------------------
+
 def rapport_proprietaire(request, proprietaire_id):
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+
     proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    
-    # ← TOUS les locataires (actifs + supprimés) pour les rapports historiques
-    locataires = proprietaire.locataires.all()
-    
-    paiements = Paiement.objects.filter(
+    locataires   = proprietaire.locataires.all()  # actifs + archivés pour historique
+    paiements    = Paiement.objects.filter(
         locataire__proprietaire=proprietaire
     ).select_related("locataire")
 
-    mois = request.GET.get("mois")
+    mois  = request.GET.get("mois")
     annee = request.GET.get("annee")
     mois_int  = int(mois)  if mois  and mois.isdigit()  else None
     annee_int = int(annee) if annee and annee.isdigit() else None
 
+    # ── Filtre par DATE DE PAIEMENT ──
     if mois_int:
         paiements = paiements.filter(date_paiement__month=mois_int)
-        mois_rapport = MOIS_FR.get(mois_int, "")
-    else:
-        mois_rapport = ""
     if annee_int:
         paiements = paiements.filter(date_paiement__year=annee_int)
 
     paiements_list = list(paiements)
+    tous_paiements = list(Paiement.objects.filter(locataire__proprietaire=proprietaire))
 
+    # ── Titre du rapport = mois PRÉCÉDENT du filtre ──
+    if mois_int:
+        date_filtre  = datetime(annee_int or datetime.now().year, mois_int, 1)
+        date_rapport = date_filtre - relativedelta(months=1)
+        mois_rapport  = MOIS_FR.get(date_rapport.month, "")
+        annee_rapport = date_rapport.year
+    else:
+        mois_rapport  = ""
+        annee_rapport = annee_int or datetime.now().year
+
+    # ── Totaux ──
     total_loyers = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
-    total_paye   = sum([p.montant for p in paiements_list])   or Decimal('0')
-    total_wc     = sum([p.frais_wc for p in paiements_list])  or Decimal('0')
+    total_paye   = sum([p.montant  for p in paiements_list]) or Decimal('0')
+    total_wc     = sum([p.frais_wc for p in paiements_list]) or Decimal('0')
     commission   = total_paye * Decimal("0.1")
     total_recu_proprietaire = total_paye - commission
 
-    # Notifications avances
+    # ── Notifications : paiements en AVANCE encaissés ce mois ──
     notifications_avance = []
     for p in paiements_list:
         if p.locataire is None:
@@ -349,11 +357,10 @@ def rapport_proprietaire(request, proprietaire_id):
                 "montant":        p.montant,
             })
 
-    # Notifications déjà payés via avance
+    # ── Notifications : déjà couverts ce mois via avance antérieure ──
     notifications_deja_paye = []
-    tous_paiements = list(Paiement.objects.filter(locataire__proprietaire=proprietaire))
     if mois_int and annee_int:
-        for loc in locataires.filter(is_deleted=False):  # ← seulement actifs pour cette notif
+        for loc in locataires.filter(is_deleted=False):
             paye_ce_mois = any(p.locataire_id == loc.id for p in paiements_list)
             if not paye_ce_mois:
                 avance = next(
@@ -374,14 +381,33 @@ def rapport_proprietaire(request, proprietaire_id):
                         "montant":        avance.montant,
                     })
 
-    # Données par locataire
+    # ── Notifications : ARRIÉRÉS encaissés ce mois ──
+    notifications_arrieres = []
+    for p in paiements_list:
+        if p.locataire is None:
+            continue
+        mois_p, annee_p = p.date_paiement.month, p.date_paiement.year
+        if (p.annee < annee_p) or (p.annee == annee_p and p.mois_concerne < mois_p):
+            notifications_arrieres.append({
+                "locataire":      p.locataire.nom,
+                "mois_concerne":  MOIS_FR.get(p.mois_concerne, ""),
+                "annee_concerne": p.annee,
+                "mois_paye":      MOIS_FR.get(mois_p, ""),
+                "annee_payee":    annee_p,
+                "montant":        p.montant,
+                "date_paiement":  p.date_paiement,
+            })
+
+    # ── Données par locataire ──
     locataires_data = []
     for loc in locataires:
         paiements_loc  = [p for p in paiements_list if p.locataire_id == loc.id]
-        montant_total  = sum([p.montant for p in paiements_loc]) or Decimal('0')
+        montant_total  = sum([p.montant  for p in paiements_loc]) or Decimal('0')
         frais_wc_total = sum([p.frais_wc for p in paiements_loc]) or Decimal('0')
         nb             = len(paiements_loc)
-        mois_couverts  = [
+
+        # Mois couverts (pour affichage HTML)
+        mois_couverts = [
             f"{MOIS_FR.get(p.mois_concerne, '')} {p.annee}"
             for p in paiements_loc
         ]
@@ -401,16 +427,17 @@ def rapport_proprietaire(request, proprietaire_id):
             else:
                 statut = "Non payé"
         elif nb > 1:
-            statut = f"Payé ({nb} mois : {', '.join(mois_couverts)})"
+            statut = f"Payé ({nb} mois)"
         else:
             p0 = paiements_loc[0]
-            if (p0.annee > p0.date_paiement.year) or \
-               (p0.annee == p0.date_paiement.year and p0.mois_concerne > p0.date_paiement.month):
+            mois_p0, annee_p0 = p0.date_paiement.month, p0.date_paiement.year
+            if (p0.annee > annee_p0) or (p0.annee == annee_p0 and p0.mois_concerne > mois_p0):
                 statut = f"Payé en avance → {MOIS_FR.get(p0.mois_concerne, '')} {p0.annee}"
+            elif (p0.annee < annee_p0) or (p0.annee == annee_p0 and p0.mois_concerne < mois_p0):
+                statut = f"Arriéré ({MOIS_FR.get(p0.mois_concerne, '')} {p0.annee})"
             else:
                 statut = "Payé"
 
-        # ← Indiquer si le locataire est supprimé
         nom_affiche = loc.nom if not loc.is_deleted else f"{loc.nom} (archivé)"
 
         locataires_data.append({
@@ -418,97 +445,81 @@ def rapport_proprietaire(request, proprietaire_id):
             "loyer":        montant_total,
             "frais_wc":     frais_wc_total,
             "statut":       statut,
-            "mois_couverts": mois_couverts,
             "nb_mois":      nb,
+            "mois_couverts": mois_couverts,
             "is_deleted":   loc.is_deleted,
         })
 
     context = {
-        "proprietaire":          proprietaire,
-        "total_loyers":          total_loyers,
-        "total_paye":            total_paye,
-        "total_wc":              total_wc,
-        "commission":            commission,
+        "proprietaire":            proprietaire,
+        "total_loyers":            total_loyers,
+        "total_paye":              total_paye,
+        "total_wc":                total_wc,
+        "commission":              commission,
         "total_recu_proprietaire": total_recu_proprietaire,
-        "locataires_data":       locataires_data,
-        "mois_list":             [(i, MOIS_FR[i]) for i in range(1, 13)],
-        "mois_rapport":          mois_rapport,
-        "mois":                  mois,
-        "annee":                 annee,
-        "notifications_avance":  notifications_avance,
+        "locataires_data":         locataires_data,
+        "mois_list":               [(i, MOIS_FR[i]) for i in range(1, 13)],
+        "mois_rapport":            mois_rapport,
+        "annee_rapport":           annee_rapport,
+        "mois":                    mois,
+        "annee":                   annee,
+        "notifications_avance":    notifications_avance,
         "notifications_deja_paye": notifications_deja_paye,
+        "notifications_arrieres":  notifications_arrieres,
     }
     return render(request, "core/rapport_proprietaire.html", context)
+
+
 # -------------------------
-# RAPPORT PROPRIÉTAIRE PDF
+# RAPPORT PROPRIÉTAIRE HTML
 # -------------------------
 def rapport_proprietaire_pdf(request, proprietaire_id):
-    mois = request.GET.get("mois")
-    annee = request.GET.get("annee")
-    proprietaire = get_object_or_404(Proprietaire, id=proprietaire_id)
-    locataires = proprietaire.locataires.all()  # ← inclut les supprimés
-    tous_paiements = list(Paiement.objects.filter(locataire__in=locataires))
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
 
+    mois  = request.GET.get("mois")
+    annee = request.GET.get("annee")
     mois_int  = int(mois)  if mois  and mois.isdigit()  else None
     annee_int = int(annee) if annee and annee.isdigit() else None
 
-    # Paiements encaissés ce mois (filtre date_paiement)
+    proprietaire   = get_object_or_404(Proprietaire, id=proprietaire_id)
+    locataires     = proprietaire.locataires.all()
+    tous_paiements = list(Paiement.objects.filter(locataire__in=locataires))
+
+    # ── Filtre par DATE DE PAIEMENT ──
     paiements = tous_paiements
     if mois_int:
         paiements = [p for p in paiements if p.date_paiement.month == mois_int]
     if annee_int:
-        paiements = [p for p in paiements if p.date_paiement.year == annee_int]
+        paiements = [p for p in paiements if p.date_paiement.year  == annee_int]
 
+    # ── Titre = mois PRÉCÉDENT ──
+    if mois_int:
+        date_filtre  = datetime(annee_int or datetime.now().year, mois_int, 1)
+        date_rapport = date_filtre - relativedelta(months=1)
+        mois_titre   = MOIS_FR.get(date_rapport.month, "")
+        annee_titre  = date_rapport.year
+    else:
+        mois_titre  = "Non spécifié"
+        annee_titre = annee or "Année courante"
+
+    # ── Totaux ──
     total_loyers            = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
-    total_paye              = sum([p.montant for p in paiements])        or Decimal('0')
+    total_paye              = sum([p.montant  for p in paiements])       or Decimal('0')
     total_wc                = sum([p.frais_wc for p in paiements])       or Decimal('0')
     commission              = total_paye * Decimal("0.1")
     total_recu_proprietaire = total_paye - commission
 
-    # ── Notifications avances encaissées CE mois ──
-    notifications_avance = []
-    for p in paiements:
-        mois_p, annee_p = p.date_paiement.month, p.date_paiement.year
-        if (p.annee > annee_p) or (p.annee == annee_p and p.mois_concerne > mois_p):
-            notifications_avance.append(
-                f"{p.locataire.nom} : {MOIS_FR.get(p.mois_concerne, '')} {p.annee} "
-                f"(paye en {MOIS_FR.get(mois_p, '')} {annee_p})"
-            )
-
-    # ── Notifications : déjà payés ce mois via avance antérieure ──
-    notifications_deja_paye = []
-    if mois_int and annee_int:
-        for loc in locataires:
-            paiements_loc_ce_mois = [p for p in paiements if p.locataire_id == loc.id]
-            if not paiements_loc_ce_mois:
-                # Chercher si une avance couvre ce mois
-                avance = next(
-                    (p for p in tous_paiements
-                     if p.locataire_id == loc.id
-                     and p.mois_concerne == mois_int
-                     and p.annee == annee_int
-                     and (p.date_paiement.month != mois_int or p.date_paiement.year != annee_int)),
-                    None
-                )
-                if avance:
-                    notifications_deja_paye.append(
-                        f"{loc.nom} : deja paye en {MOIS_FR.get(avance.date_paiement.month, '')} {avance.date_paiement.year}"
-                    )
-
-    # ── Données par locataire ──
+    # ── Données par locataire — statut simplifié, SANS mention arriéré/avance ──
     locataires_data = []
     for loc in locataires:
         paiements_loc = [p for p in paiements if p.locataire_id == loc.id]
-        montant_total = sum([p.montant for p in paiements_loc]) or Decimal('0')
+        montant_total = sum([p.montant  for p in paiements_loc]) or Decimal('0')
         wc_total      = sum([p.frais_wc for p in paiements_loc]) or Decimal('0')
         nb            = len(paiements_loc)
 
-        mois_couverts_str = ", ".join([
-            f"{MOIS_FR.get(p.mois_concerne, '')[:3]} {p.annee}"
-            for p in paiements_loc
-        ])
-
-        if not paiements_loc:
+        if nb == 0:
+            # Vérifier si couvert par une avance antérieure
             avance = next(
                 (p for p in tous_paiements
                  if p.locataire_id == loc.id
@@ -518,131 +529,102 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
                  and (p.date_paiement.month != mois_int or p.date_paiement.year != annee_int)),
                 None
             )
-            if avance:
-                statut = f"Avance ({MOIS_FR.get(avance.date_paiement.month,'')[:3]} {avance.date_paiement.year})"
-            else:
-                statut = "Non paye"
-        elif nb > 1:
-            statut = f"Paye x{nb} mois"
+            statut = "Payé" if avance else "Non payé"
+        elif nb == 1:
+            statut = "Payé"
         else:
-            p0 = paiements_loc[0]
-            if (p0.annee > p0.date_paiement.year) or \
-               (p0.annee == p0.date_paiement.year and p0.mois_concerne > p0.date_paiement.month):
-                statut = f"Avance -> {MOIS_FR.get(p0.mois_concerne,'')[:3]} {p0.annee}"
-            else:
-                statut = "Paye"
+            statut = f"Payé {nb} mois"
 
         locataires_data.append({
-            "nom": loc.nom,
+            "nom":     loc.nom if not loc.is_deleted else f"{loc.nom} (archivé)",
             "montant": montant_total,
-            "wc": wc_total,
-            "nb": nb,
-            "mois_couverts_str": mois_couverts_str,
-            "statut": statut,
+            "wc":      wc_total,
+            "nb":      nb,
+            "statut":  statut,
         })
 
-    # ── Génération PDF ──
+    # ════════════════════════════════════════
+    #  GÉNÉRATION PDF
+    # ════════════════════════════════════════
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="rapport_{proprietaire.nom}.pdf"'
+    response['Content-Disposition'] = (
+        f'attachment; filename="rapport_{proprietaire.nom}_{mois_titre}_{annee_titre}.pdf"'
+    )
 
     p = canvas.Canvas(response, pagesize=A4)
     width, height = A4
 
-    # En-tête
+    # ── En-tête ──
     p.setFont("Helvetica-Bold", 18)
     p.drawCentredString(width / 2, height - 50, "RAPPORT MENSUEL NIVAL IMPACT")
-    p.setFont("Helvetica", 13)
-    mois_texte  = MOIS_FR.get(mois_int, "Non specifie") if mois_int else "Non specifie"
-    annee_texte = annee if annee else "Annee courante"
-    p.drawCentredString(width / 2, height - 75, f"Mois : {mois_texte} | Annee : {annee_texte}")
-    p.setFont("Helvetica-Bold", 13)
-    p.drawString(50, height - 110, f"Proprietaire : {proprietaire.nom}")
 
-    recap_y = height - 145
+    p.setFont("Helvetica-Bold", 14)
+    p.drawCentredString(width / 2, height - 75, f"Rapport de : {mois_titre} {annee_titre}")
+
+    p.setFont("Helvetica", 10)
+    mois_filtre_nom = MOIS_FR.get(mois_int, "") if mois_int else ""
+    if mois_filtre_nom:
+        p.drawCentredString(
+            width / 2, height - 93,
+            f"(paiements encaissés en {mois_filtre_nom} {annee_int or ''})"
+        )
+
+    p.setFont("Helvetica-Bold", 13)
+    p.drawString(50, height - 118, f"Propriétaire : {proprietaire.nom}")
+
+    # ── Récapitulatif financier ──
+    recap_y = height - 150
     line_h  = 28
 
     def draw_recap_line(label, valeur, y):
-        p.setFont("Helvetica", 13)
+        p.setFont("Helvetica", 12)
         p.drawString(50, y, label)
-        p.setFont("Helvetica-Bold", 13)
+        p.setFont("Helvetica-Bold", 12)
         p.drawRightString(width - 50, y, valeur)
 
-    draw_recap_line("Montant total des loyers :", f"{total_loyers:.2f} FCFA", recap_y); recap_y -= line_h
-    draw_recap_line("Montant total percu :",      f"{total_paye:.2f} FCFA",   recap_y); recap_y -= line_h
-    draw_recap_line("Commission agence (10%) :",  f"{commission:.2f} FCFA",   recap_y); recap_y -= line_h
+    draw_recap_line("Montant total des loyers :",    f"{total_loyers:.2f} FCFA",            recap_y); recap_y -= line_h
+    draw_recap_line("Montant total perçu :",          f"{total_paye:.2f} FCFA",              recap_y); recap_y -= line_h
+    draw_recap_line("Commission agence (10%) :",      f"{commission:.2f} FCFA",              recap_y); recap_y -= line_h
 
+    # Ligne verte : montant propriétaire
     p.setFillColorRGB(0.85, 0.95, 0.85)
     p.rect(40, recap_y - 5, width - 80, line_h - 2, stroke=0, fill=1)
     p.setFillColorRGB(0, 0, 0)
-    draw_recap_line("Montant paye au proprietaire :", f"{total_recu_proprietaire:.2f} FCFA", recap_y)
-    recap_y -= line_h
+    draw_recap_line("Montant payé au propriétaire :", f"{total_recu_proprietaire:.2f} FCFA", recap_y); recap_y -= line_h
 
     if total_wc > 0:
         draw_recap_line("Frais de fosse (WC) :", f"{total_wc:.2f} FCFA", recap_y)
         recap_y -= line_h
 
-    # Notifications avances
-    if notifications_avance:
-        recap_y -= 5
-        p.setFillColorRGB(1.0, 0.95, 0.7)
-        bloc_h = 14 * (len(notifications_avance) + 1) + 8
-        p.rect(40, recap_y - bloc_h + 14, width - 80, bloc_h, stroke=1, fill=1)
-        p.setFillColorRGB(0, 0, 0)
-        p.setFont("Helvetica-Bold", 9)
-        p.drawString(50, recap_y, "Paiements en avance encaisses ce mois :")
-        recap_y -= 14
-        p.setFont("Helvetica", 8)
-        for note in notifications_avance:
-            p.drawString(60, recap_y, f"• {note}")
-            recap_y -= 12
-        recap_y -= 5
-
-    # Notifications déjà payés
-    if notifications_deja_paye:
-        recap_y -= 5
-        p.setFillColorRGB(0.85, 0.95, 1.0)
-        bloc_h = 14 * (len(notifications_deja_paye) + 1) + 8
-        p.rect(40, recap_y - bloc_h + 14, width - 80, bloc_h, stroke=1, fill=1)
-        p.setFillColorRGB(0, 0, 0)
-        p.setFont("Helvetica-Bold", 9)
-        p.drawString(50, recap_y, "Deja payes ce mois via avance anterieure :")
-        recap_y -= 14
-        p.setFont("Helvetica", 8)
-        for note in notifications_deja_paye:
-            p.drawString(60, recap_y, f"• {note}")
-            recap_y -= 12
-        recap_y -= 5
-
-    # Ligne séparatrice
-    recap_y -= 5
+    # ── Séparateur ──
+    recap_y -= 8
     p.setStrokeColorRGB(0.7, 0.7, 0.7)
     p.line(40, recap_y, width - 40, recap_y)
     recap_y -= 20
 
-    # Tableau locataires
-    p.setFont("Helvetica-Bold", 13)
-    p.drawString(50, recap_y, "Detail par locataire :")
-    recap_y -= 25
+    # ── Tableau locataires — SANS colonne mois couverts, statut simplifié ──
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, recap_y, "Détail par locataire :")
+    recap_y -= 22
 
-    has_wc = total_wc > 0
+    has_wc     = total_wc > 0
     row_height = 22
 
-    # Colonnes : Nom | Montant | Mois couverts | (WC) | Statut
     if has_wc:
-        col_x      = [50,  175, 295, 390, 455]
-        col_widths = [125, 120, 95,  65,  80]
-        headers    = ["Locataire", "Montant encaisse", "Mois couverts", "Frais WC", "Statut"]
+        col_x      = [50,  210, 340, 420]
+        col_widths = [160, 130,  80,  85]
+        headers    = ["Locataire", "Montant encaissé", "Frais WC", "Statut"]
     else:
-        col_x      = [50,  190, 330, 455]
-        col_widths = [140, 140, 125, 90]
-        headers    = ["Locataire", "Montant encaisse", "Mois couverts", "Statut"]
+        col_x      = [50,  240, 410]
+        col_widths = [190, 170, 115]
+        headers    = ["Locataire", "Montant encaissé", "Statut"]
 
     # En-tête tableau
     p.setFillColorRGB(0.15, 0.15, 0.35)
     for i in range(len(headers)):
         p.rect(col_x[i], recap_y, col_widths[i], row_height, stroke=0, fill=1)
     p.setFillColorRGB(1, 1, 1)
-    p.setFont("Helvetica-Bold", 9)
+    p.setFont("Helvetica-Bold", 10)
     for i, header in enumerate(headers):
         p.drawCentredString(col_x[i] + col_widths[i] / 2, recap_y + 7, header)
     p.setFillColorRGB(0, 0, 0)
@@ -656,93 +638,53 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
 
         bg = (0.95, 0.95, 1.0) if idx % 2 == 0 else (1, 1, 1)
 
-        # Couleur statut
-        if "Avance" in ld["statut"]:
-            statut_color = (0.0, 0.45, 0.7)
-        elif "Non" in ld["statut"]:
+        # Couleur statut : vert = payé, rouge = non payé
+        if "Non" in ld["statut"]:
             statut_color = (0.75, 0.1, 0.1)
         else:
             statut_color = (0.1, 0.55, 0.1)
 
-        # Multi-lignes si nb_mois > 1 → agrandir la cellule
-        mois_str = ld["mois_couverts_str"] if ld["mois_couverts_str"] else "—"
-        # Découper les mois couverts si trop long
-        mois_lines = []
-        mots = mois_str.split(", ")
-        ligne_courante = ""
-        for mot in mots:
-            if len(ligne_courante) + len(mot) + 2 <= 18:
-                ligne_courante = (ligne_courante + ", " + mot).strip(", ")
-            else:
-                if ligne_courante:
-                    mois_lines.append(ligne_courante)
-                ligne_courante = mot
-        if ligne_courante:
-            mois_lines.append(ligne_courante)
-        if not mois_lines:
-            mois_lines = ["—"]
-
-        cell_h = max(row_height, len(mois_lines) * 13 + 6)
+        montant_str = f"{ld['montant']:.2f} FCFA"
 
         if has_wc:
-            vals = [
-                ld["nom"],
-                f"{ld['montant']:.2f} FCFA" + (f" (x{ld['nb']})" if ld["nb"] > 1 else ""),
-                None,  # mois couverts (multi-lignes)
-                f"{ld['wc']:.2f} FCFA",
-                ld["statut"],
-            ]
+            vals       = [ld["nom"], montant_str, f"{ld['wc']:.2f} FCFA", ld["statut"]]
+            col_statut = 3
         else:
-            vals = [
-                ld["nom"],
-                f"{ld['montant']:.2f} FCFA" + (f" (x{ld['nb']})" if ld["nb"] > 1 else ""),
-                None,  # mois couverts (multi-lignes)
-                ld["statut"],
-            ]
+            vals       = [ld["nom"], montant_str, ld["statut"]]
+            col_statut = 2
 
         for i, val in enumerate(vals):
             p.setFillColorRGB(*bg)
-            p.rect(col_x[i], y - cell_h + row_height, col_widths[i], cell_h, stroke=1, fill=1)
+            p.rect(col_x[i], y, col_widths[i], row_height, stroke=1, fill=1)
             p.setFillColorRGB(0, 0, 0)
 
-            col_mois = 2
-            col_statut = 4 if has_wc else 3
-
-            if i == col_mois:
-                # Mois couverts multi-lignes
-                ty = y + 6
-                p.setFont("Helvetica", 8)
-                for ml in mois_lines:
-                    p.drawString(col_x[i] + 3, ty, ml)
-                    ty -= 12
-            elif i == col_statut:
+            if i == col_statut:
                 p.setFillColorRGB(*statut_color)
-                p.setFont("Helvetica-Bold", 8)
-                p.drawString(col_x[i] + 4, y + 6, val)
+                p.setFont("Helvetica-Bold", 10)
+                p.drawString(col_x[i] + 5, y + 7, val)
                 p.setFillColorRGB(0, 0, 0)
             elif i == 1:
-                p.setFont("Helvetica-Bold", 9)
-                p.drawString(col_x[i] + 4, y + 6, val)
+                p.setFont("Helvetica-Bold", 10)
+                p.drawString(col_x[i] + 5, y + 7, val)
             else:
-                p.setFont("Helvetica", 9)
-                p.drawString(col_x[i] + 4, y + 6, val)
+                p.setFont("Helvetica", 10)
+                p.drawString(col_x[i] + 5, y + 7, val)
 
-        y -= cell_h
+        y -= row_height
 
-    # Signatures
-    y -= 35
+    # ── Signatures ──
+    y -= 40
     if y < 60:
         p.showPage()
         y = height - 60
     p.setFont("Helvetica", 12)
     p.setFillColorRGB(0, 0, 0)
     p.drawString(50, y, "Signature du gestionnaire")
-    p.drawString(width - 200, y, "Signature du proprietaire")
+    p.drawString(width - 200, y, "Signature du propriétaire")
 
     p.showPage()
     p.save()
     return response
-
 
 # -------------------------
 # RAPPORT GLOBAL HTML

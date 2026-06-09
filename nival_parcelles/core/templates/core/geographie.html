@@ -1,0 +1,137 @@
+{% extends 'core/base.html' %}
+{% block title %}Géographie{% endblock %}
+{% block nav_geo %}active{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">📍 Gestion géographique</h3>
+
+<div class="row g-3 mb-4">
+    <!-- Commune -->
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white fw-semibold">🏙️ Communes</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="commune">
+                    <div class="input-group mb-2">
+                        <input type="text" name="commune-nom" class="form-control form-control-sm" placeholder="Nom commune" required>
+                        <button class="btn btn-primary btn-sm">➕</button>
+                    </div>
+                </form>
+                <ul class="list-group list-group-flush">
+                    {% for c in communes %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                        <span>{{ c.nom }}</span>
+                        <form method="post" action="{% url 'supprimer_commune' c.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn-xs btn-outline-danger btn-sm py-0 px-1" onclick="return confirm('Supprimer ?')">🗑</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Arrondissement -->
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white fw-semibold">🏛️ Arrondissements</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="arrondissement">
+                    <select name="arr-commune" class="form-select form-select-sm mb-2" required>
+                        <option value="">Commune</option>
+                        {% for c in communes %}<option value="{{ c.pk }}">{{ c.nom }}</option>{% endfor %}
+                    </select>
+                    <div class="input-group mb-2">
+                        <input type="text" name="arr-nom" class="form-control form-control-sm" placeholder="Nom arrondissement" required>
+                        <button class="btn btn-success btn-sm">➕</button>
+                    </div>
+                </form>
+                <ul class="list-group list-group-flush" style="max-height:200px;overflow-y:auto;">
+                    {% for c in communes %}{% for a in c.arrondissements.all %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                        <span><small class="text-muted">{{ c.nom }}</small> / {{ a.nom }}</span>
+                        <form method="post" action="{% url 'supprimer_arrondissement' a.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="return confirm('Supprimer ?')">🗑</button>
+                        </form>
+                    </li>
+                    {% endfor %}{% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quartier -->
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-warning fw-semibold">🏘️ Quartiers</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="quartier">
+                    <select name="qrt-arrondissement" class="form-select form-select-sm mb-2" required>
+                        <option value="">Arrondissement</option>
+                        {% for c in communes %}{% for a in c.arrondissements.all %}
+                        <option value="{{ a.pk }}">{{ c.nom }} / {{ a.nom }}</option>
+                        {% endfor %}{% endfor %}
+                    </select>
+                    <div class="input-group mb-2">
+                        <input type="text" name="qrt-nom" class="form-control form-control-sm" placeholder="Nom quartier" required>
+                        <button class="btn btn-warning btn-sm">➕</button>
+                    </div>
+                </form>
+                <ul class="list-group list-group-flush" style="max-height:200px;overflow-y:auto;">
+                    {% for c in communes %}{% for a in c.arrondissements.all %}{% for q in a.quartiers.all %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                        <span><small class="text-muted">{{ a.nom }}</small> / {{ q.nom }}</span>
+                        <form method="post" action="{% url 'supprimer_quartier' q.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="return confirm('Supprimer ?')">🗑</button>
+                        </form>
+                    </li>
+                    {% endfor %}{% endfor %}{% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zone -->
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-info text-white fw-semibold">📌 Zones</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="zone">
+                    <select name="zone-quartier" class="form-select form-select-sm mb-2" required>
+                        <option value="">Quartier</option>
+                        {% for c in communes %}{% for a in c.arrondissements.all %}{% for q in a.quartiers.all %}
+                        <option value="{{ q.pk }}">{{ a.nom }} / {{ q.nom }}</option>
+                        {% endfor %}{% endfor %}{% endfor %}
+                    </select>
+                    <div class="input-group mb-2">
+                        <input type="text" name="zone-nom" class="form-control form-control-sm" placeholder="Nom zone" required>
+                        <button class="btn btn-info btn-sm text-white">➕</button>
+                    </div>
+                </form>
+                <ul class="list-group list-group-flush" style="max-height:200px;overflow-y:auto;">
+                    {% for c in communes %}{% for a in c.arrondissements.all %}{% for q in a.quartiers.all %}{% for z in q.zones.all %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                        <span><small class="text-muted">{{ q.nom }}</small> / {{ z.nom }}</span>
+                        <form method="post" action="{% url 'supprimer_zone' z.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="return confirm('Supprimer ?')">🗑</button>
+                        </form>
+                    </li>
+                    {% endfor %}{% endfor %}{% endfor %}{% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'core/base.html' %}
+{% block title %}Ventes{% endblock %}
+{% block nav_ventes %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>💼 Ventes</h3>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalVente">➕ Nouvelle vente</button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Parcelle</th><th>Zone / Lot</th><th>Acheteur</th><th>Date</th><th>Mode</th><th>Versé</th><th>Solde</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for v in ventes %}
+                <tr>
+                    <td><strong>{{ v.parcelle.reference }}</strong></td>
+                    <td><small>{{ v.parcelle.lotissement.zone.nom }} / {{ v.parcelle.lotissement.nom }}</small></td>
+                    <td>{{ v.acheteur.nom }}</td>
+                    <td>{{ v.date_vente }}</td>
+                    <td>
+                        {% if v.mode_paiement == 'comptant' %}
+                            <span class="badge bg-success">Comptant</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Échelonné</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-success fw-bold">{{ v.montant_verse|floatformat:0 }} F</td>
+                    <td>
+                        {% if v.est_solde %}
+                            <span class="badge bg-success">Soldé ✅</span>
+                        {% else %}
+                            <span class="text-danger fw-bold">{{ v.solde_restant|floatformat:0 }} F</span>
+                        {% endif %}
+                    </td>
+                    <td class="d-flex gap-1">
+                        <a href="{% url 'detail_vente' v.pk %}" class="btn btn-sm btn-outline-primary">📋</a>
+                        <a href="{% url 'recu_pdf' v.pk %}" class="btn btn-sm btn-outline-danger">📄</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted">Aucune vente enregistrée</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal nouvelle vente -->
+<div class="modal fade" id="modalVente" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">➕ Nouvelle vente</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <div class="text-end">
+                    <button type="submit" class="btn btn-success">✅ Enregistrer la vente</button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endblock %}

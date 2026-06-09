@@ -1,3 +1,5 @@
+{% load static %}
+{% load core_extras %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -6,34 +8,38 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <style>
         .montant { font-weight: bold; }
+        .badge-arriere  { background-color: #e67e00; color: #fff; }
+        .badge-avance   { background-color: #0d6efd; color: #fff; }
+        .badge-paye     { background-color: #198754; color: #fff; }
+        .badge-nonpaye  { background-color: #dc3545; color: #fff; }
         @media print {
             .no-print { display: none !important; }
-            .montant { font-weight: bold !important; }
         }
     </style>
 </head>
 <body class="container mt-4">
 
+    <!-- ═══ BOUTONS NO-PRINT ═══ -->
     <div class="no-print">
         <a href="{% url 'accueil' %}" class="btn btn-secondary mb-3">⬅ Retour à l'accueil</a>
 
-        <form method="get" action="{% url 'rapport_proprietaire' proprietaire.id %}" class="mb-3">
-            <label for="mois" class="form-label">Choisir le mois :</label>
-            <select name="mois" id="mois" class="form-select w-auto d-inline">
+        <form method="get" action="{% url 'rapport_proprietaire' proprietaire.id %}" class="mb-3 d-flex flex-wrap align-items-center gap-2">
+            <label class="fw-semibold">Mois :</label>
+            <select name="mois" class="form-select w-auto">
                 <option value="">Tous</option>
                 {% for num, nom in mois_list %}
                     <option value="{{ num }}" {% if mois == num|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
                 {% endfor %}
             </select>
 
-            <label for="annee" class="form-label ms-3">Année :</label>
-            <select name="annee" id="annee" class="form-select w-auto d-inline">
+            <label class="fw-semibold">Année :</label>
+            <select name="annee" class="form-select w-auto">
                 <option value="">Année courante</option>
                 <option value="2024" {% if annee == "2024" %}selected{% endif %}>2024</option>
                 <option value="2025" {% if annee == "2025" %}selected{% endif %}>2025</option>
                 <option value="2026" {% if annee == "2026" %}selected{% endif %}>2026</option>
             </select>
-            <button type="submit" class="btn btn-outline-primary ms-2">🔍 Filtrer</button>
+            <button type="submit" class="btn btn-outline-primary">🔍 Filtrer</button>
         </form>
 
         <form method="get" action="{% url 'rapport_proprietaire_pdf' proprietaire.id %}" class="mb-4">
@@ -43,50 +49,89 @@
         </form>
     </div>
 
-    <h2 class="text-center mb-4">📊 Rapport mensuel NIVAL IMPACT</h2>
+    <!-- ═══ EN-TÊTE RAPPORT ═══ -->
+    <h2 class="text-center mb-1">📊 Rapport mensuel NIVAL IMPACT</h2>
+
     {% if mois_rapport %}
-    <h5 class="text-center text-primary">
-        Mois du rapport : {{ mois_rapport }}{% if annee %} - {{ annee }}{% endif %}
-    </h5>
+    <h4 class="text-center text-primary mb-0">
+        Rapport de : <strong>{{ mois_rapport }} {{ annee_rapport }}</strong>
+    </h4>
+    <p class="text-center text-muted mb-3">
+        <small>
+            (paiements encaissés en
+            {% if mois == "1" %}Janvier
+            {% elif mois == "2" %}Février
+            {% elif mois == "3" %}Mars
+            {% elif mois == "4" %}Avril
+            {% elif mois == "5" %}Mai
+            {% elif mois == "6" %}Juin
+            {% elif mois == "7" %}Juillet
+            {% elif mois == "8" %}Août
+            {% elif mois == "9" %}Septembre
+            {% elif mois == "10" %}Octobre
+            {% elif mois == "11" %}Novembre
+            {% elif mois == "12" %}Décembre
+            {% endif %}
+            {% if annee %}{{ annee }}{% endif %})
+        </small>
+    </p>
     {% endif %}
 
-    <h4>Propriétaire : <strong>{{ proprietaire.nom }}</strong></h4>
+    <h4 class="mb-4">Propriétaire : <strong>{{ proprietaire.nom }}</strong></h4>
 
-    <!-- Notification avances encaissées CE mois -->
-    {% if notifications_avance %}
-    <div class="alert alert-warning mt-3">
-        <strong>⚠️ Paiements en avance encaissés ce mois :</strong>
-        <ul class="mb-0 mt-1">
-            {% for n in notifications_avance %}
+    <!-- ═══ NOTIFICATION ARRIÉRÉS ═══ -->
+    {% if notifications_arrieres %}
+    <div class="alert alert-warning border-warning mb-3" style="border-left:4px solid #e67e00;">
+        <strong>⚠️ Arriérés encaissés ce mois :</strong>
+        <ul class="mb-0 mt-2">
+            {% for n in notifications_arrieres %}
             <li>
-                <strong>{{ n.locataire }}</strong> a payé
-                <span class="badge bg-warning text-dark">{{ n.mois_couvert }} {{ n.annee_couverte }}</span>
-                en avance lors du paiement de <strong>{{ n.mois_paye }} {{ n.annee_payee }}</strong>
-                — <strong>{{ n.montant|floatformat:2 }} FCFA</strong>
+                <strong>{{ n.locataire }}</strong> a réglé son arriéré de
+                <span class="badge badge-arriere">{{ n.mois_concerne }} {{ n.annee_concerne }}</span>
+                le <strong>{{ n.date_paiement|date:"d/m/Y" }}</strong>
+                (encaissé en <strong>{{ n.mois_paye }} {{ n.annee_payee }}</strong>)
+                — <span class="montant">{{ n.montant|floatformat:2 }} FCFA</span>
             </li>
             {% endfor %}
         </ul>
     </div>
     {% endif %}
 
-    <!-- Notification : locataires qui ont déjà payé CE mois via une avance antérieure -->
+    <!-- ═══ NOTIFICATION AVANCES ═══ -->
+    {% if notifications_avance %}
+    <div class="alert alert-info mb-3" style="border-left:4px solid #0d6efd;">
+        <strong>🔔 Paiements en avance encaissés ce mois :</strong>
+        <ul class="mb-0 mt-2">
+            {% for n in notifications_avance %}
+            <li>
+                <strong>{{ n.locataire }}</strong> a payé en avance
+                <span class="badge badge-avance">{{ n.mois_couvert }} {{ n.annee_couverte }}</span>
+                lors du paiement de <strong>{{ n.mois_paye }} {{ n.annee_payee }}</strong>
+                — <span class="montant">{{ n.montant|floatformat:2 }} FCFA</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- ═══ NOTIFICATION DÉJÀ COUVERTS ═══ -->
     {% if notifications_deja_paye %}
-    <div class="alert alert-info mt-2">
-        <strong>📢 Déjà payés ce mois via avance :</strong>
-        <ul class="mb-0 mt-1">
+    <div class="alert alert-secondary mb-3" style="border-left:4px solid #6c757d;">
+        <strong>📢 Déjà couverts ce mois via avance antérieure :</strong>
+        <ul class="mb-0 mt-2">
             {% for n in notifications_deja_paye %}
             <li>
                 <strong>{{ n.locataire }}</strong> a déjà payé
-                <span class="badge bg-info text-dark">{{ n.mois_couvert }} {{ n.annee_couverte }}</span>
+                <span class="badge bg-secondary">{{ n.mois_couvert }} {{ n.annee_couverte }}</span>
                 lors du paiement de <strong>{{ n.mois_paye }} {{ n.annee_payee }}</strong>
-                — <strong>{{ n.montant|floatformat:2 }} FCFA</strong>
+                — <span class="montant">{{ n.montant|floatformat:2 }} FCFA</span>
             </li>
             {% endfor %}
         </ul>
     </div>
     {% endif %}
 
-    <!-- Récap chiffres -->
+    <!-- ═══ RÉCAPITULATIF FINANCIER ═══ -->
     <table class="table table-bordered w-auto mb-4 fs-6">
         <tbody>
             <tr>
@@ -114,7 +159,7 @@
         </tbody>
     </table>
 
-    <!-- Détail par locataire -->
+    <!-- ═══ TABLEAU DÉTAIL PAR LOCATAIRE ═══ -->
     <h5 class="mt-4">Détail par locataire</h5>
     <table class="table table-striped table-bordered fs-6">
         <thead class="table-dark">
@@ -128,54 +173,68 @@
         </thead>
         <tbody>
             {% for loc in locataires_data %}
-            <tr {% if loc.nb_mois > 1 %}class="table-info"{% endif %}>
+            <tr {% if loc.nb_mois > 1 %}class="table-info"{% endif %}
+                {% if loc.is_deleted %}style="opacity:0.7;"{% endif %}>
+
                 <td><strong>{{ loc.nom }}</strong></td>
+
                 <td class="montant">
                     {{ loc.loyer|floatformat:2 }} FCFA
                     {% if loc.nb_mois > 1 %}
                         <small class="text-muted d-block">({{ loc.nb_mois }} mois)</small>
                     {% endif %}
                 </td>
+
                 <td>
                     {% if loc.mois_couverts %}
                         {% for mc in loc.mois_couverts %}
-                            <span class="badge bg-secondary">{{ mc }}</span>
+                            <span class="badge bg-secondary me-1">{{ mc }}</span>
                         {% endfor %}
                     {% else %}
-                        —
+                        <span class="text-muted">—</span>
                     {% endif %}
                 </td>
+
                 {% if total_wc > 0 %}
                 <td class="montant">{{ loc.frais_wc|floatformat:2 }} FCFA</td>
                 {% endif %}
+
                 <td>
-                    {% if "avance" in loc.statut %}
-                        <span class="badge bg-info text-dark">🔔 {{ loc.statut }}</span>
-                    {% elif "Payé" in loc.statut %}
-                        <span class="badge bg-success">✅ {{ loc.statut }}</span>
+                    {% with s=loc.statut %}
+                    {% if "avance" in s|lower %}
+                        <span class="badge badge-avance">🔔 {{ s }}</span>
+                    {% elif "Arriéré" in s %}
+                        <span class="badge badge-arriere">⚠️ {{ s }}</span>
+                    {% elif "Payé" in s %}
+                        <span class="badge badge-paye">✅ {{ s }}</span>
                     {% else %}
-                        <span class="badge bg-danger">❌ Non payé</span>
+                        <span class="badge badge-nonpaye">❌ Non payé</span>
                     {% endif %}
+                    {% endwith %}
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="{% if total_wc > 0 %}5{% else %}4{% endif %}" class="text-center">Aucun locataire trouvé</td>
+                <td colspan="{% if total_wc > 0 %}5{% else %}4{% endif %}" class="text-center text-muted">
+                    Aucun locataire trouvé
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
+    <!-- ═══ SIGNATURES ═══ -->
     <div class="row mt-5">
         <div class="col text-center">
-            <p>Signature du gestionnaire</p>
-            <hr style="width:200px; margin:auto;">
+            <p class="mb-4">Signature du gestionnaire</p>
+            <hr style="width:200px;margin:auto;">
         </div>
         <div class="col text-center">
-            <p>Signature du propriétaire</p>
-            <hr style="width:200px; margin:auto;">
+            <p class="mb-4">Signature du propriétaire</p>
+            <hr style="width:200px;margin:auto;">
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

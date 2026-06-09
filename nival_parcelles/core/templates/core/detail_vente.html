@@ -1,0 +1,128 @@
+{% extends 'core/base.html' %}
+{% block title %}Vente {{ vente.parcelle.reference }}{% endblock %}
+{% block nav_ventes %}active{% endblock %}
+
+{% block content %}
+<a href="{% url 'ventes' %}" class="btn btn-secondary mb-3">⬅ Retour</a>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>💼 Vente — {{ vente.parcelle.reference }}</h3>
+    <a href="{% url 'recu_pdf' vente.pk %}" class="btn btn-danger">📄 Télécharger le reçu PDF</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">🗺️ Parcelle</div>
+            <div class="card-body">
+                <p><strong>Référence :</strong> {{ vente.parcelle.reference }}</p>
+                <p><strong>Lotissement :</strong> {{ vente.parcelle.lotissement.nom }}</p>
+                <p><strong>Zone :</strong> {{ vente.parcelle.lotissement.zone.nom }}</p>
+                <p><strong>Superficie :</strong> {{ vente.parcelle.superficie }} m²</p>
+                <p class="mb-0"><strong>Prix total :</strong> {{ vente.parcelle.prix_total|floatformat:0 }} FCFA</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">👤 Acheteur</div>
+            <div class="card-body">
+                <p><strong>Nom :</strong> {{ vente.acheteur.nom }}</p>
+                <p><strong>Téléphone :</strong> {{ vente.acheteur.telephone }}</p>
+                <p><strong>Email :</strong> {{ vente.acheteur.email|default:"—" }}</p>
+                <p><strong>Date de vente :</strong> {{ vente.date_vente }}</p>
+                <p class="mb-0"><strong>Mode :</strong> {{ vente.get_mode_paiement_display }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Récap paiements -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body text-center">
+                <div class="fs-4 fw-bold">{{ vente.parcelle.prix_total|floatformat:0 }} F</div>
+                <div>Prix total</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center">
+                <div class="fs-4 fw-bold">{{ vente.montant_verse|floatformat:0 }} F</div>
+                <div>Total versé</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white {% if vente.est_solde %}bg-success{% else %}bg-danger{% endif %} shadow-sm">
+            <div class="card-body text-center">
+                <div class="fs-4 fw-bold">
+                    {% if vente.est_solde %}Soldé ✅{% else %}{{ vente.solde_restant|floatformat:0 }} F{% endif %}
+                </div>
+                <div>Solde restant</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tranches -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">💰 Paiements / Tranches</span>
+        {% if not vente.est_solde %}
+        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalTranche">➕ Ajouter un paiement</button>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Date</th><th>Montant</th><th>Remarque</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for t in tranches %}
+                <tr>
+                    <td>{{ t.date_paiement }}</td>
+                    <td class="fw-bold text-success">{{ t.montant|floatformat:0 }} FCFA</td>
+                    <td>{{ t.remarque|default:"—" }}</td>
+                    <td>
+                        <form method="post" action="{% url 'supprimer_tranche' t.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce paiement ?')">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted">Aucun paiement enregistré</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal ajout tranche -->
+<div class="modal fade" id="modalTranche" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">➕ Ajouter un paiement</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <div class="text-end">
+                    <button type="submit" class="btn btn-success">✅ Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endblock %}

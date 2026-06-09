@@ -1,0 +1,189 @@
+{% extends 'core/base.html' %}
+{% block title %}Terrains{% endblock %}
+{% block nav_terrains %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>🌍 Terrains</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTerrain">➕ Ajouter</button>
+</div>
+
+<!-- Filtres géographiques -->
+<form method="get" class="d-flex gap-2 flex-wrap mb-3" id="filtreForm">
+    <select name="commune" class="form-select w-auto" id="f_commune" onchange="this.form.submit()">
+        <option value="">Toutes communes</option>
+        {% for c in communes %}<option value="{{ c.pk }}" {% if commune_sel == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nom }}</option>{% endfor %}
+    </select>
+    <select name="zone" class="form-select w-auto">
+        <option value="">Toutes zones</option>
+    </select>
+    <select name="statut" class="form-select w-auto" onchange="this.form.submit()">
+        <option value="">Tous statuts</option>
+        <option value="disponible" {% if statut == 'disponible' %}selected{% endif %}>Disponible</option>
+        <option value="vendue"     {% if statut == 'vendue' %}selected{% endif %}>Vendue</option>
+    </select>
+    <button type="submit" class="btn btn-outline-primary">🔍</button>
+    <a href="{% url 'terrains' %}" class="btn btn-outline-secondary">✖</a>
+</form>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Référence</th><th>Zone</th><th>Quartier</th><th>Arrondissement</th><th>Commune</th><th>Superficie</th><th>Parcelles</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for t in terrains %}
+                <tr>
+                    <td><strong>{{ t.reference }}</strong></td>
+                    <td>{{ t.zone.nom }}</td>
+                    <td>{{ t.zone.quartier.nom }}</td>
+                    <td>{{ t.zone.quartier.arrondissement.nom }}</td>
+                    <td>{{ t.zone.quartier.arrondissement.commune.nom }}</td>
+                    <td>{{ t.superficie_ha }} ha / {{ t.superficie_m2|floatformat:0 }} m²</td>
+                    <td>
+                        <span class="badge bg-success">{{ t.parcelles.filter.count }} dispo</span>
+                        / {{ t.nb_parcelles_reelles }} total
+                    </td>
+                    <td class="d-flex gap-1">
+                        <a href="{% url 'fiche_terrain' t.pk %}" class="btn btn-sm btn-outline-info">👁</a>
+                        <form method="post" action="{% url 'supprimer_terrain' t.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ?')">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted">Aucun terrain</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal ajout terrain -->
+<div class="modal fade" id="modalTerrain" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">➕ Ajouter un terrain</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <!-- Sélecteurs en cascade -->
+                <div class="mb-2">
+                    <label class="form-label">Commune</label>
+                    <select class="form-select" id="sel_commune" required>
+                        <option value="">--- Choisir ---</option>
+                        {% for c in communes %}<option value="{{ c.pk }}">{{ c.nom }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Arrondissement</label>
+                    <select class="form-select" id="sel_arr" disabled><option value="">--- D'abord une commune ---</option></select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Quartier</label>
+                    <select class="form-select" id="sel_qrt" disabled><option value="">--- D'abord un arrondissement ---</option></select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Zone</label>
+                    <select class="form-select" id="sel_zone" name="zone" required disabled><option value="">--- D'abord un quartier ---</option></select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Référence</label>
+                    <input type="text" name="reference" class="form-control" required>
+                </div>
+                <div class="row">
+                    <div class="col mb-2">
+                        <label class="form-label">Superficie (ha)</label>
+                        <input type="number" name="superficie_ha" step="0.0001" class="form-control" required id="sup_ha_input">
+                    </div>
+                    <div class="col mb-2">
+                        <label class="form-label">= m² (calculé)</label>
+                        <input type="text" class="form-control bg-light" id="sup_m2_display" readonly>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Nb parcelles prévues</label>
+                    <input type="number" name="nb_parcelles_prevues" class="form-control" value="0">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Plan (photo/PDF)</label>
+                    <input type="file" name="plan" class="form-control">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="text-end mt-3">
+                    <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cascade géographique dans le modal
+document.getElementById('sel_commune').onchange = function() {
+    const id = this.value;
+    const arr = document.getElementById('sel_arr');
+    arr.innerHTML = '<option value="">Chargement...</option>';
+    arr.disabled = true;
+    document.getElementById('sel_qrt').innerHTML = '<option value="">---</option>';
+    document.getElementById('sel_qrt').disabled = true;
+    document.getElementById('sel_zone').innerHTML = '<option value="">---</option>';
+    document.getElementById('sel_zone').disabled = true;
+    if (!id) return;
+    fetch(`/api/arrondissements/${id}/`)
+        .then(r => r.json())
+        .then(data => {
+            arr.innerHTML = '<option value="">--- Choisir ---</option>';
+            data.arrondissements.forEach(a => arr.innerHTML += `<option value="${a.id}">${a.nom}</option>`);
+            arr.disabled = false;
+        });
+};
+
+document.getElementById('sel_arr').onchange = function() {
+    const id = this.value;
+    const qrt = document.getElementById('sel_qrt');
+    qrt.innerHTML = '<option value="">Chargement...</option>';
+    qrt.disabled = true;
+    document.getElementById('sel_zone').innerHTML = '<option value="">---</option>';
+    document.getElementById('sel_zone').disabled = true;
+    if (!id) return;
+    fetch(`/api/quartiers/${id}/`)
+        .then(r => r.json())
+        .then(data => {
+            qrt.innerHTML = '<option value="">--- Choisir ---</option>';
+            data.quartiers.forEach(q => qrt.innerHTML += `<option value="${q.id}">${q.nom}</option>`);
+            qrt.disabled = false;
+        });
+};
+
+document.getElementById('sel_qrt').onchange = function() {
+    const id = this.value;
+    const zone = document.getElementById('sel_zone');
+    zone.innerHTML = '<option value="">Chargement...</option>';
+    zone.disabled = true;
+    if (!id) return;
+    fetch(`/api/zones/${id}/`)
+        .then(r => r.json())
+        .then(data => {
+            zone.innerHTML = '<option value="">--- Choisir ---</option>';
+            data.zones.forEach(z => zone.innerHTML += `<option value="${z.id}">${z.nom}</option>`);
+            zone.disabled = false;
+        });
+};
+
+// Conversion ha → m²
+document.getElementById('sup_ha_input').oninput = function() {
+    const ha = parseFloat(this.value) || 0;
+    document.getElementById('sup_m2_display').value = (ha * 10000).toFixed(2) + ' m²';
+};
+</script>
+{% endblock %}

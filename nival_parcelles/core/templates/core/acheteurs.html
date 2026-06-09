@@ -1,0 +1,64 @@
+{% extends 'core/base.html' %}
+{% block title %}Acheteurs{% endblock %}
+{% block nav_acheteurs %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>👥 Acheteurs</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAcheteur">➕ Ajouter</button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Nom</th><th>Téléphone</th><th>Email</th><th>Adresse</th><th>Achats</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for a in acheteurs %}
+                <tr>
+                    <td><strong>{{ a.nom }}</strong></td>
+                    <td>{{ a.telephone }}</td>
+                    <td>{{ a.email|default:"—" }}</td>
+                    <td>{{ a.adresse|default:"—" }}</td>
+                    <td>{{ a.ventes.count }}</td>
+                    <td>
+                        <form method="post" action="{% url 'supprimer_acheteur' a.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ?')">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted">Aucun acheteur</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalAcheteur" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">➕ Ajouter un acheteur</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endblock %}

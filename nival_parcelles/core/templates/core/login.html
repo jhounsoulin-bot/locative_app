@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion — NIVAL Parcelles</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        body { background: #1a1a3e; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-card { background: #fff; border-radius: 16px; padding: 40px; width: 100%; max-width: 400px; }
+    </style>
+</head>
+<body>
+<div class="login-card shadow-lg">
+    <h2 class="text-center mb-1">🏡 NIVAL IMPACT</h2>
+    <p class="text-center text-muted mb-4">Gestion des parcelles</p>
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Identifiant</label>
+            <input type="text" name="username" class="form-control" required autofocus>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Mot de passe</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 mt-2">🔐 Se connecter</button>
+    </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+{% extends 'core/base.html' %}
+{% block title %}Parcelles{% endblock %}
+{% block nav_parcelles %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>🗺️ Parcelles</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalParcelle">➕ Ajout manuel</button>
+</div>
+
+<!-- Filtres -->
+<form method="get" class="d-flex gap-2 flex-wrap mb-3">
+    <select name="commune" class="form-select w-auto" id="f_commune">
+        <option value="">Toutes communes</option>
+        {% for c in communes %}<option value="{{ c.pk }}" {% if commune_sel == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nom }}</option>{% endfor %}
+    </select>
+    <select name="statut" class="form-select w-auto">
+        <option value="">Tous statuts</option>
+        <option value="disponible" {% if statut == 'disponible' %}selected{% endif %}>Disponible</option>
+        <option value="reservee"   {% if statut == 'reservee' %}selected{% endif %}>Réservée</option>
+        <option value="vendue"     {% if statut == 'vendue' %}selected{% endif %}>Vendue</option>
+    </select>
+    <button type="submit" class="btn btn-outline-primary">🔍 Filtrer</button>
+    <a href="{% url 'parcelles' %}" class="btn btn-outline-secondary">✖</a>
+</form>
+
+<!-- Totaux filtrés -->
+<div class="row g-2 mb-3">
+    <div class="col-auto">
+        <div class="badge bg-dark fs-6 p-2">Total : {{ nb_total }} parcelles — {{ total_sup_ha|floatformat:2 }} ha / {{ total_sup_m2|floatformat:0 }} m²</div>
+    </div>
+    <div class="col-auto">
+        <div class="badge bg-success fs-6 p-2">Disponibles : {{ nb_dispo }} — {{ dispo_sup_ha|floatformat:2 }} ha / {{ dispo_sup_m2|floatformat:0 }} m²</div>
+    </div>
+    <div class="col-auto">
+        <div class="badge bg-danger fs-6 p-2">Vendues : {{ nb_vendues }}</div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Référence</th><th>Terrain</th><th>Zone</th><th>Quartier</th><th>Arrondissement</th><th>Commune</th><th>Superficie</th><th>Prix</th><th>Statut</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for par in parcelles %}
+                <tr>
+                    <td><strong>{{ par.reference }}</strong></td>
+                    <td>{{ par.terrain.reference }}</td>
+                    <td>{{ par.terrain.zone.nom }}</td>
+                    <td>{{ par.terrain.zone.quartier.nom }}</td>
+                    <td>{{ par.terrain.zone.quartier.arrondissement.nom }}</td>
+                    <td>{{ par.terrain.zone.quartier.arrondissement.commune.nom }}</td>
+                    <td>{{ par.superficie_m2 }} m² / {{ par.superficie_ha|floatformat:4 }} ha</td>
+                    <td>{{ par.prix_total|floatformat:0 }} F</td>
+                    <td>
+                        {% if par.statut == 'disponible' %}<span class="badge bg-success">Disponible</span>
+                        {% elif par.statut == 'reservee' %}<span class="badge bg-warning text-dark">Réservée</span>
+                        {% else %}<span class="badge bg-danger">Vendue</span>{% endif %}
+                    </td>
+                    <td class="d-flex gap-1">
+                        <a href="{% url 'fiche_parcelle' par.pk %}" class="btn btn-sm btn-outline-info">👁</a>
+                        <a href="{% url 'modifier_parcelle' par.pk %}" class="btn btn-sm btn-outline-primary">✏️</a>
+                        <form method="post" action="{% url 'supprimer_parcelle' par.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ?')">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="text-center text-muted">Aucune parcelle</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal ajout manuel -->
+<div class="modal fade" id="modalParcelle" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">➕ Ajout manuel d'une parcelle</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="manuel">
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                </div>
+                {% endfor %}
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endblock %}

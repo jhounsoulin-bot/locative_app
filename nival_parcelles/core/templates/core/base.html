@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}NIVAL — Parcelles{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        body { background:#f4f6f9; }
+        .sidebar { min-height:100vh; background:#1a1a3e; padding-top:20px; position:sticky; top:0; }
+        .sidebar a { color:#ccc; display:block; padding:10px 20px; text-decoration:none; font-size:.9rem; }
+        .sidebar a:hover, .sidebar a.active { background:#2d2d6b; color:#fff; }
+        .sidebar .brand { color:#fff; font-weight:bold; padding:10px 20px 20px; border-bottom:1px solid #2d2d6b; margin-bottom:10px; }
+        .main { padding:25px; }
+        .stat-card { border-radius:12px; padding:20px; color:#fff; }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <div class="sidebar col-md-2">
+        <div class="brand">🏡 NIVAL Parcelles</div>
+        <a href="{% url 'dashboard' %}"  class="{% block nav_dash %}{% endblock %}">📊 Dashboard</a>
+        <a href="{% url 'terrains' %}"   class="{% block nav_terrains %}{% endblock %}">🌍 Terrains</a>
+        <a href="{% url 'parcelles' %}"  class="{% block nav_parcelles %}{% endblock %}">🗺️ Parcelles</a>
+        <a href="{% url 'ventes' %}"     class="{% block nav_ventes %}{% endblock %}">💼 Ventes</a>
+        <a href="{% url 'acheteurs' %}"  class="{% block nav_acheteurs %}{% endblock %}">👥 Acheteurs</a>
+        <a href="{% url 'geographie' %}" class="{% block nav_geo %}{% endblock %}">📍 Géographie</a>
+        <hr style="border-color:#2d2d6b;">
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger ms-3">🚪 Déconnexion</button>
+        </form>
+    </div>
+    <div class="main col-md-10">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

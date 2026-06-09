@@ -1,0 +1,115 @@
+{% extends 'core/base.html' %}
+{% block title %}Terrain {{ terrain.reference }}{% endblock %}
+{% block nav_terrains %}active{% endblock %}
+
+{% block content %}
+<a href="{% url 'terrains' %}" class="btn btn-secondary mb-3">⬅ Retour</a>
+<h3>🌍 Terrain — {{ terrain.reference }}</h3>
+
+<div class="row g-3 mb-4 mt-1">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Informations</div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr><td class="text-muted">Référence</td><td><strong>{{ terrain.reference }}</strong></td></tr>
+                    <tr><td class="text-muted">Zone</td><td>{{ terrain.zone.nom }}</td></tr>
+                    <tr><td class="text-muted">Quartier</td><td>{{ terrain.zone.quartier.nom }}</td></tr>
+                    <tr><td class="text-muted">Arrondissement</td><td>{{ terrain.zone.quartier.arrondissement.nom }}</td></tr>
+                    <tr><td class="text-muted">Commune</td><td>{{ terrain.zone.quartier.arrondissement.commune.nom }}</td></tr>
+                    <tr><td class="text-muted">Superficie totale</td><td><strong>{{ terrain.superficie_ha }} ha / {{ terrain.superficie_m2|floatformat:0 }} m²</strong></td></tr>
+                    <tr><td class="text-muted">Parcelles prévues</td><td>{{ terrain.nb_parcelles_prevues }}</td></tr>
+                    <tr><td class="text-muted">Parcelles créées</td><td>{{ terrain.nb_parcelles_reelles }}</td></tr>
+                    <tr><td class="text-muted">Sup. disponible</td><td class="text-success fw-bold">{{ terrain.superficie_disponible_m2|floatformat:0 }} m²</td></tr>
+                    <tr><td class="text-muted">Sup. vendue</td><td class="text-danger fw-bold">{{ terrain.superficie_vendue_m2|floatformat:0 }} m²</td></tr>
+                </table>
+                {% if terrain.plan %}
+                <a href="{{ terrain.plan.url }}" target="_blank" class="btn btn-outline-danger btn-sm mt-2">📄 Voir le plan</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Génération auto -->
+    <div class="col-md-7">
+        <div class="card shadow-sm border-success">
+            <div class="card-header bg-success text-white fw-semibold">⚡ Génération automatique de parcelles</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'generer_parcelles' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="terrain" value="{{ terrain.pk }}">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre de parcelles</label>
+                            <input type="number" name="nb_parcelles" class="form-control" min="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Superficie par parcelle (m²)</label>
+                            <input type="number" name="superficie_m2" step="0.01" class="form-control" required id="sup_unit">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">= ha (calculé)</label>
+                            <input type="text" class="form-control bg-light" id="sup_unit_ha" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Prix par parcelle (FCFA)</label>
+                            <input type="number" name="prix_total" step="0.01" class="form-control" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Préfixe référence <small class="text-muted">(ex: CAL-01- → CAL-01-001, CAL-01-002...)</small></label>
+                            <input type="text" name="prefixe_reference" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-success">⚡ Générer les parcelles</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des parcelles -->
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">🗺️ Parcelles de ce terrain ({{ parcelles.count }})</span>
+        <a href="{% url 'parcelles' %}?zone={{ terrain.zone.pk }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Référence</th><th>Superficie</th><th>Prix</th><th>Statut</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for par in parcelles %}
+                <tr>
+                    <td><strong>{{ par.reference }}</strong></td>
+                    <td>{{ par.superficie_m2 }} m² / {{ par.superficie_ha|floatformat:4 }} ha</td>
+                    <td>{{ par.prix_total|floatformat:0 }} FCFA</td>
+                    <td>
+                        {% if par.statut == 'disponible' %}<span class="badge bg-success">Disponible</span>
+                        {% elif par.statut == 'reservee' %}<span class="badge bg-warning text-dark">Réservée</span>
+                        {% else %}<span class="badge bg-danger">Vendue</span>{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'fiche_parcelle' par.pk %}" class="btn btn-sm btn-outline-info">👁</a>
+                        <a href="{% url 'modifier_parcelle' par.pk %}" class="btn btn-sm btn-outline-primary">✏️</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted">Aucune parcelle — utilisez la génération automatique ci-dessus</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('sup_unit').oninput = function() {
+    const m2 = parseFloat(this.value) || 0;
+    document.getElementById('sup_unit_ha').value = (m2 / 10000).toFixed(4) + ' ha';
+};
+</script>
+{% endblock %}

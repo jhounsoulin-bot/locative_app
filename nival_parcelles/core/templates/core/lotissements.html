@@ -1,0 +1,73 @@
+{% extends 'core/base.html' %}
+{% block title %}Lotissements{% endblock %}
+{% block nav_lotissements %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>🏘️ Lotissements</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLot">➕ Ajouter</button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Nom</th><th>Zone</th><th>Description</th><th>Parcelles</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for lot in lotissements %}
+                <tr>
+                    <td><strong>{{ lot.nom }}</strong></td>
+                    <td><span class="badge bg-secondary">{{ lot.zone.nom }}</span></td>
+                    <td>{{ lot.description|default:"—" }}</td>
+                    <td>{{ lot.parcelles.count }}</td>
+                    <td>
+                        <form method="post" action="{% url 'supprimer_lotissement' lot.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce lotissement ?')">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted">Aucun lotissement</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal ajout lotissement -->
+<div class="modal fade" id="modalLot" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">➕ Ajouter un lotissement</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Nom</label>
+                    <input type="text" name="nom" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Zone</label>
+                    <select name="zone" class="form-select" required>
+                        <option value="">--- Choisir ---</option>
+                        {% for z in form.zone.field.queryset %}
+                        <option value="{{ z.pk }}">{{ z.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">✅ Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+{% endblock %}
