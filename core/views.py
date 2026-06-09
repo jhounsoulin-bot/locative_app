@@ -690,20 +690,17 @@ def rapport_proprietaire_pdf(request, proprietaire_id):
 # RAPPORT GLOBAL HTML
 # -------------------------
 def rapport_global(request):
-    mois = request.GET.get("mois")
+    mois  = request.GET.get("mois")
     annee = request.GET.get("annee")
-    proprietaires = Proprietaire.objects.prefetch_related("locataires")
-    data = []
 
     mois_int  = int(mois)  if mois  and mois.isdigit()  else None
     annee_int = int(annee) if annee and annee.isdigit() else None
 
+    proprietaires = Proprietaire.objects.prefetch_related("locataires")
+    data = []
 
-
-# APRÈS
-    proprietaires = Proprietaire.objects.prefetch_related("locataires")  # déjà sans filtre is_deleted
     for proprietaire in proprietaires:
-        locataires = proprietaire.locataires.all()  # ← tous les locataires
+        locataires     = proprietaire.locataires.all()
         tous_paiements = list(Paiement.objects.filter(locataire__in=locataires))
 
         # Paiements encaissés ce mois (filtre date_paiement)
@@ -714,25 +711,22 @@ def rapport_global(request):
             paiements_list = [p for p in paiements_list if p.date_paiement.year == annee_int]
 
         total_loyers = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
-        total_paye   = sum([p.montant for p in paiements_list])   or Decimal('0')
-        total_wc     = sum([p.frais_wc for p in paiements_list])  or Decimal('0')
+        total_paye   = sum([p.montant  for p in paiements_list]) or Decimal('0')
+        total_wc     = sum([p.frais_wc for p in paiements_list]) or Decimal('0')
         commission   = total_paye * Decimal("0.1")
         total_recu   = total_paye - commission + total_wc
 
         # ── Locataires non payés ce mois ──
-        # Un locataire est "couvert" s'il a un paiement encaissé ce mois OU
-        # une avance antérieure qui couvre ce mois
         locataires_non_payes = []
         for loc in locataires:
             paye_ce_mois = any(p.locataire_id == loc.id for p in paiements_list)
             if not paye_ce_mois:
-                # Vérifier avance antérieure couvrant ce mois
                 couvert_par_avance = False
                 if mois_int and annee_int:
                     couvert_par_avance = any(
                         p.locataire_id == loc.id
                         and p.mois_concerne == mois_int
-                        and p.annee == annee_int
+                        and (p.annee or p.date_paiement.year) == annee_int
                         for p in tous_paiements
                     )
                 if not couvert_par_avance:
@@ -741,24 +735,38 @@ def rapport_global(request):
         # ── Arriérés : encaissés ce mois mais couvrant un mois PASSÉ ──
         arrieres = []
         for p in paiements_list:
-            mois_p, annee_p = p.date_paiement.month, p.date_paiement.year
-            mois_couvert_passe = (p.annee < annee_p) or (p.annee == annee_p and p.mois_concerne < mois_p)
+            if p.locataire is None:
+                continue
+            mois_p        = p.date_paiement.month
+            annee_p       = p.date_paiement.year
+            annee_couverte = p.annee or annee_p  # fallback si annee est None
+            mois_couvert_passe = (
+                (annee_couverte < annee_p) or
+                (annee_couverte == annee_p and p.mois_concerne < mois_p)
+            )
             if mois_couvert_passe:
                 arrieres.append(
-                    f"{p.locataire.nom} ({MOIS_FR.get(p.mois_concerne, '?')} {p.annee})"
+                    f"{p.locataire.nom} ({MOIS_FR.get(p.mois_concerne, '?')} {annee_couverte})"
                 )
 
         # ── Avances : encaissées ce mois mais couvrant un mois FUTUR ──
         avances = []
         for p in paiements_list:
-            mois_p, annee_p = p.date_paiement.month, p.date_paiement.year
-            mois_couvert_futur = (p.annee > annee_p) or (p.annee == annee_p and p.mois_concerne > mois_p)
+            if p.locataire is None:
+                continue
+            mois_p        = p.date_paiement.month
+            annee_p       = p.date_paiement.year
+            annee_couverte = p.annee or annee_p  # fallback si annee est None
+            mois_couvert_futur = (
+                (annee_couverte > annee_p) or
+                (annee_couverte == annee_p and p.mois_concerne > mois_p)
+            )
             if mois_couvert_futur:
                 avances.append(
-                    f"{p.locataire.nom} ({MOIS_FR.get(p.mois_concerne, '?')} {p.annee})"
+                    f"{p.locataire.nom} ({MOIS_FR.get(p.mois_concerne, '?')} {annee_couverte})"
                 )
 
-        # ── Locataires couverts par avance antérieure (pas encaissés ce mois) ──
+        # ── Couverts par avance antérieure ──
         deja_payes_avance = []
         if mois_int and annee_int:
             for loc in locataires:
@@ -768,7 +776,7 @@ def rapport_global(request):
                         (p for p in tous_paiements
                          if p.locataire_id == loc.id
                          and p.mois_concerne == mois_int
-                         and p.annee == annee_int
+                         and (p.annee or p.date_paiement.year) == annee_int
                          and (p.date_paiement.month != mois_int or p.date_paiement.year != annee_int)),
                         None
                     )
@@ -778,38 +786,40 @@ def rapport_global(request):
                         )
 
         data.append({
-            "proprietaire":        proprietaire.nom,
-            "total_loyers":        total_loyers,
-            "total_paye":          total_paye,
-            "total_wc":            total_wc,
-            "commission":          commission,
-            "total_recu":          total_recu,
-            "non_paye":            total_loyers - total_paye,
+            "proprietaire":         proprietaire.nom,
+            "total_loyers":         total_loyers,
+            "total_paye":           total_paye,
+            "total_wc":             total_wc,
+            "commission":           commission,
+            "total_recu":           total_recu,
+            "non_paye":             total_loyers - total_paye,
             "locataires_non_payes": locataires_non_payes,
-            "arrieres":            arrieres,
-            "avances":             avances,
-            "deja_payes_avance":   deja_payes_avance,
+            "arrieres":             arrieres,
+            "avances":              avances,
+            "deja_payes_avance":    deja_payes_avance,
         })
 
     context = {
-        "rapport":     data,
-        "mois_list":   [(i, MOIS_FR[i]) for i in range(1, 13)],
-        "annee_list":  [2024, 2025, 2026],
-        "mois":        mois,
-        "annee":       annee,
+        "rapport":    data,
+        "mois_list":  [(i, MOIS_FR[i]) for i in range(1, 13)],
+        "annee_list": [2024, 2025, 2026],
+        "mois":       mois,
+        "annee":      annee,
     }
     return render(request, "core/rapport_global.html", context)
+
 
 # -------------------------
 # RAPPORT GLOBAL PDF
 # -------------------------
 def rapport_global_pdf(request):
-    mois = request.GET.get("mois")
+    mois  = request.GET.get("mois")
     annee = request.GET.get("annee")
-    proprietaires = Proprietaire.objects.prefetch_related("locataires")
 
     mois_int  = int(mois)  if mois  and mois.isdigit()  else None
     annee_int = int(annee) if annee and annee.isdigit() else None
+
+    proprietaires = Proprietaire.objects.prefetch_related("locataires")
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="rapport_global.pdf"'
@@ -820,7 +830,7 @@ def rapport_global_pdf(request):
     def wrap_text(text, max_chars):
         words = text.split()
         lines = []
-        current = "" 
+        current = ""
         for word in words:
             if len(current) + len(word) + 1 <= max_chars:
                 current = (current + " " + word).strip()
@@ -841,7 +851,6 @@ def rapport_global_pdf(request):
     p.setFont("Helvetica-Bold", 11)
     p.drawCentredString(width / 2, height - 28, titre)
 
-    # ── 10 colonnes en paysage A4 (~841pt) ──
     col_x      = [0.3*cm, 3.3*cm, 6.1*cm, 8.9*cm, 11.7*cm, 14.3*cm, 17.0*cm, 19.7*cm, 22.7*cm, 25.7*cm]
     col_widths = [3.0*cm, 2.8*cm, 2.8*cm, 2.8*cm,  2.6*cm,  2.7*cm,  2.7*cm,  3.0*cm,  3.0*cm,  3.0*cm]
     max_chars  = [10,     9,      9,      9,        8,       8,       8,       10,      10,      10]
@@ -886,7 +895,7 @@ def rapport_global_pdf(request):
         return hy
 
     for idx, proprietaire in enumerate(proprietaires):
-        locataires = proprietaire.locataires.all()
+        locataires     = proprietaire.locataires.all()
         tous_paiements = list(Paiement.objects.filter(locataire__in=locataires))
 
         paiements = tous_paiements
@@ -896,8 +905,8 @@ def rapport_global_pdf(request):
             paiements = [pm for pm in paiements if pm.date_paiement.year == annee_int]
 
         total_loyers = sum([l.loyer_mensuel for l in locataires]) or Decimal('0')
-        total_paye   = sum([pm.montant for pm in paiements])       or Decimal('0')
-        total_wc     = sum([pm.frais_wc for pm in paiements])      or Decimal('0')
+        total_paye   = sum([pm.montant  for pm in paiements])     or Decimal('0')
+        total_wc     = sum([pm.frais_wc for pm in paiements])     or Decimal('0')
         non_paye     = total_loyers - total_paye
         commission   = total_paye * Decimal("0.1")
         total_recu   = total_paye - commission + total_wc
@@ -909,7 +918,7 @@ def rapport_global_pdf(request):
         total_commission_global += commission
         total_recu_global       += total_recu
 
-        # Non payés (excluant ceux couverts par avance)
+        # Non payés
         locataires_non_payes = []
         for loc in locataires:
             paye = any(pm.locataire_id == loc.id for pm in paiements)
@@ -917,25 +926,37 @@ def rapport_global_pdf(request):
                 couvert = mois_int and annee_int and any(
                     pm.locataire_id == loc.id
                     and pm.mois_concerne == mois_int
-                    and pm.annee == annee_int
+                    and (pm.annee or pm.date_paiement.year) == annee_int
                     for pm in tous_paiements
                 )
                 if not couvert:
                     locataires_non_payes.append(loc.nom)
 
-        # Arriérés (mois passés payés ce mois)
+        # Arriérés
         arrieres = []
         for pm in paiements:
-            mois_p, annee_p = pm.date_paiement.month, pm.date_paiement.year
-            if (pm.annee < annee_p) or (pm.annee == annee_p and pm.mois_concerne < mois_p):
-                arrieres.append(f"{pm.locataire.nom} ({MOIS_FR.get(pm.mois_concerne,'?')[:3]} {pm.annee})")
+            if pm.locataire is None:
+                continue
+            mois_p         = pm.date_paiement.month
+            annee_p        = pm.date_paiement.year
+            annee_couverte = pm.annee or annee_p  # fallback
+            if (annee_couverte < annee_p) or (annee_couverte == annee_p and pm.mois_concerne < mois_p):
+                arrieres.append(
+                    f"{pm.locataire.nom} ({MOIS_FR.get(pm.mois_concerne,'?')[:3]} {annee_couverte})"
+                )
 
-        # Avances (mois futurs payés ce mois) + couverts par avance antérieure
+        # Avances + couverts
         avances_et_couverts = []
         for pm in paiements:
-            mois_p, annee_p = pm.date_paiement.month, pm.date_paiement.year
-            if (pm.annee > annee_p) or (pm.annee == annee_p and pm.mois_concerne > mois_p):
-                avances_et_couverts.append(f"+{pm.locataire.nom} ({MOIS_FR.get(pm.mois_concerne,'?')[:3]} {pm.annee})")
+            if pm.locataire is None:
+                continue
+            mois_p         = pm.date_paiement.month
+            annee_p        = pm.date_paiement.year
+            annee_couverte = pm.annee or annee_p  # fallback
+            if (annee_couverte > annee_p) or (annee_couverte == annee_p and pm.mois_concerne > mois_p):
+                avances_et_couverts.append(
+                    f"+{pm.locataire.nom} ({MOIS_FR.get(pm.mois_concerne,'?')[:3]} {annee_couverte})"
+                )
 
         if mois_int and annee_int:
             for loc in locataires:
@@ -945,7 +966,7 @@ def rapport_global_pdf(request):
                         (pm for pm in tous_paiements
                          if pm.locataire_id == loc.id
                          and pm.mois_concerne == mois_int
-                         and pm.annee == annee_int
+                         and (pm.annee or pm.date_paiement.year) == annee_int
                          and (pm.date_paiement.month != mois_int or pm.date_paiement.year != annee_int)),
                         None
                     )
@@ -954,7 +975,6 @@ def rapport_global_pdf(request):
                             f"✓{loc.nom} ({MOIS_FR.get(avance.date_paiement.month,'')[:3]} {avance.date_paiement.year})"
                         )
 
-        # Wrapping
         values_raw = [
             proprietaire.nom,
             f"{total_loyers:.0f} F",
@@ -993,7 +1013,6 @@ def rapport_global_pdf(request):
         cell_top = y - cell_h
         bg = (0.95, 0.95, 1.0) if idx % 2 == 0 else (1, 1, 1)
 
-        # 7 premières colonnes
         p.setFont("Helvetica", 7)
         for i, lines in enumerate(wrapped_values):
             p.setFillColorRGB(*bg)
@@ -1004,7 +1023,7 @@ def rapport_global_pdf(request):
                 p.drawString(col_x[i] + 3, text_y, line)
                 text_y -= LINE_H
 
-        # Colonne "Non payés" (index 7) — rouge si impayés, vert sinon
+        # Colonne Non payés
         p.setFillColorRGB(*bg)
         p.rect(col_x[7], cell_top, col_widths[7], cell_h, stroke=1, fill=1)
         p.setFont("Helvetica", 6)
@@ -1014,7 +1033,7 @@ def rapport_global_pdf(request):
             p.drawString(col_x[7] + 3, text_y, line)
             text_y -= LINE_H
 
-        # Colonne "Arriérés" (index 8) — orange
+        # Colonne Arriérés
         p.setFillColorRGB(*bg)
         p.rect(col_x[8], cell_top, col_widths[8], cell_h, stroke=1, fill=1)
         p.setFont("Helvetica", 6)
@@ -1024,7 +1043,7 @@ def rapport_global_pdf(request):
             p.drawString(col_x[8] + 3, text_y, line)
             text_y -= LINE_H
 
-        # Colonne "Avances/Couverts" (index 9) — bleu
+        # Colonne Avances/Couverts
         p.setFillColorRGB(*bg)
         p.rect(col_x[9], cell_top, col_widths[9], cell_h, stroke=1, fill=1)
         p.setFont("Helvetica", 6)
@@ -1059,7 +1078,6 @@ def rapport_global_pdf(request):
         p.setFillColorRGB(0, 0, 0)
         p.drawCentredString(col_x[i] + col_widths[i] / 2, y - total_h + 5, val)
 
-    # Signatures
     y -= total_h + 35
     if y < 30:
         p.showPage()
